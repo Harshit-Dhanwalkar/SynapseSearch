@@ -3,8 +3,8 @@
 # Configuration for the crawler
 START_URLS = [
     "http://quotes.toscrape.com/",
+    "https://en.wikipedia.org/wiki/Book",
     "https://en.wikipedia.org/wiki/Car",
-    "https://www.topgear.com/",
     "https://www.motor1.com/",
     "https://www.cnet.com/roadshow/",
     "https://www.goodreads.com/shelf/show/fiction",
