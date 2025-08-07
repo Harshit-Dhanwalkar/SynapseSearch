@@ -4,3 +4,4 @@
 2025-08-07 14:09:08,611 - __main__ - INFO - Received query: 'cars' with type 'others'
 2025-08-07 14:09:18,842 - __main__ - INFO - Received query: 'cars' with type 'all'
 2025-08-07 14:15:17,917 - __main__ - INFO - Received query: 'cars' with type 'all'
+2025-08-07 14:27:47,209 - __main__ - INFO - Received query: 'bike' with type 'all'

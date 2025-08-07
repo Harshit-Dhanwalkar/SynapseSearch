@@ -36,14 +36,11 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
               containing 'title', 'text', and 'images' (list of {'src', 'alt'}).
               Example: {url: {'title': 'Page Title', 'text': 'cleaned body text', 'images': [{'src': 'url', 'alt': 'desc'}]}}
     """
-    # Queue for URLs to visit, storing (url, depth)
     queue = [(start_url, 0)]
-    # Set to keep track of visited URLs to avoid infinite loops and duplicates
     visited_urls = set()
-    # Dictionary to store crawled content: {url: {'title': '...', 'text': '...', 'images': [...]}}
     crawled_data = {}
 
-    print(f"Starting crawl from: {start_url}")
+    print(f"Starting crawl from: {start_url}\n")
 
     while queue and len(crawled_data) < max_pages:
         current_url, depth = queue.pop(0)
@@ -84,20 +81,12 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
                     img.get("alt", "")
                 )  # Get alt text, default to empty string
 
-                # Filtering criteria:
-                # 1. Ensure it's a valid http/https image URL
-                # 2. Exclude images based on common file extensions for icons/design elements
-                # 3. Exclude very small images (often icons, tracking pixels). If width/height not present, assume it's not too small.
-                # 4. Exclude images with common generic alt text patterns
-                # 5. Exclude images based on common URL path patterns for non-content images
-
-                # Check file extension (more common design extensions)
+                # Check file extension
                 is_design_extension = any(
                     img_src.lower().endswith(ext)
                     for ext in [".ico", ".gif", ".svg", ".webp", ".png"]
-                )  # PNG can be content, but often used for logos/icons
+                )
 
-                # Check dimensions (if available). If not available, we can't filter by size.
                 width = img.get("width")
                 height = img.get("height")
                 is_small_image = False
@@ -105,10 +94,8 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
                     try:
                         width = int(width)
                         height = int(height)
-                        if width > 0 and height > 0:  # Ensure valid dimensions
-                            is_small_image = (
-                                width < 50 and height < 50
-                            )  # Both dimensions must be small
+                        if width > 0 and height > 0:
+                            is_small_image = width < 50 and height < 50
                     except ValueError:
                         pass  # Ignore if width/height are not valid numbers
 
@@ -142,14 +129,13 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
                     "graph",
                     "chart",
                     "diagram",
-                    "figure",  # Added more for informational graphics
+                    "figure",
                 ]
                 is_generic_alt = any(
                     pattern in img_alt for pattern in generic_alt_patterns
                 )
 
                 # Check common URL path patterns for non-content images
-                # This is powerful for filtering out site assets
                 url_path = urlparse(img_src).path.lower()
                 is_design_url_path = any(
                     pattern in url_path
@@ -167,7 +153,6 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
                         "/thumbnails/",
                     ]
                 )
-                # Also check if the image is a very common, small, and likely decorative image name
                 is_common_decorative_name = any(
                     name in url_path
                     for name in [
@@ -183,18 +168,16 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
 
                 # Combine all filtering logic
                 if (
-                    img_src.startswith("http")  # Must be an absolute HTTP/HTTPS URL
-                    and not is_design_extension  # Not a common design file type
-                    and not is_small_image  # Not a very small image (if dimensions are known)
-                    and not is_generic_alt  # Alt text is not generic
-                    and not is_design_url_path  # URL path doesn't suggest it's a design asset
-                    and not is_common_decorative_name  # Not a common decorative image name
+                    img_src.startswith("http")
+                    and not is_design_extension
+                    and not is_small_image
+                    and not is_generic_alt
+                    and not is_design_url_path
+                    and not is_common_decorative_name
                 ):
                     images.append({"src": img_src, "alt": img_alt})
 
-            if (
-                cleaned_page_body_text or cleaned_page_title or images
-            ):  # Only store if there's actual content
+            if cleaned_page_body_text or cleaned_page_title or images:
                 crawled_data[current_url] = {
                     "title": cleaned_page_title,
                     "text": cleaned_page_body_text,
@@ -221,7 +204,7 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
         except Exception as e:
             print(f"An unexpected error occurred with {current_url}: {e}")
 
-    print(f"\nFinished crawling. Total pages crawled: {len(crawled_data)}")
+    print(f"\nFinished crawling {start_url}. Total pages crawled: {len(crawled_data)}")
     return crawled_data
 
 
