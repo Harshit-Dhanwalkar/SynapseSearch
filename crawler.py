@@ -50,7 +50,7 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
             continue
 
         print(
-            f"Crawling (Depth: {depth}, Pages: {len(crawled_data)}/{max_pages}): {current_url}"
+            f"Crawling (Depth: {depth}, Pages: {len(crawled_data)+1}/{max_pages}): {current_url}"
         )
         visited_urls.add(current_url)
 

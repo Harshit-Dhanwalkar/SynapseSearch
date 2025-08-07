@@ -1,4 +1,10 @@
 Flask
+flask-limiter
+flask-caching
 requests
 beautifulsoup4
 nltk
+bleach
+symspellpy
+gensim
+opencv-python

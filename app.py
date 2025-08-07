@@ -4,17 +4,33 @@ from collections import defaultdict
 from logging.handlers import RotatingFileHandler
 from urllib.parse import urlparse
 
+import bleach
 from flask import Flask, jsonify, render_template, request
+from flask_caching import Cache
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from config import START_URLS
 from indexer import InvertedIndexer
 from ranker import TFIDFRanker
 
 app = Flask(__name__)
+limiter = Limiter(
+    app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
+)
 
 # Initialize indexer globally
 indexer = InvertedIndexer()
 ranker = None  # Will be initialized after indexer loads documents
+
+# Configure cache
+cache = Cache(
+    config={
+        "CACHE_TYPE": "SimpleCache",  # For development
+        "CACHE_DEFAULT_TIMEOUT": 300,  # 5 minutes
+    }
+)
+cache.init_app(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +59,11 @@ else:
 # --- End Data Loading ---
 
 
+def sanitize_query(query):
+    """Sanitize user input to prevent XSS attacks."""
+    return bleach.clean(query.strip(), tags=[], strip=True)
+
+
 @app.template_filter("url_domain")
 def url_domain_filter(url):
     """Custom filter to extract the domain from a URL."""
@@ -55,10 +76,14 @@ def index():
     return render_template("index.html", start_urls=START_URLS)
 
 
-@app.route("/search", methods=["GET"])
+@app.route("/search")
+@cache.cached(query_string=True)
+@limiter.limit("10/minute")
+# @app.route("/search", methods=["GET"])
 def search():
     """Handles search queries and displays results with content type tabs."""
-    query = request.args.get("query", "").strip()
+    query = sanitize_query(request.args.get("query", ""))
+    # query = request.args.get("query", "").strip()
     # Get the content type from the URL, defaulting to 'all'
     content_type = request.args.get("type", "all").strip()
     results = []
