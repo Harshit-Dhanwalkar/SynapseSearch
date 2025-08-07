@@ -1,0 +1,5 @@
+2025-08-07 14:08:47,975 - __main__ - INFO - Received query: 'cars' with type 'all'
+2025-08-07 14:08:55,833 - __main__ - INFO - Received query: 'cars' with type 'images'
+2025-08-07 14:09:01,197 - __main__ - INFO - Received query: 'cars' with type 'videos'
+2025-08-07 14:09:08,611 - __main__ - INFO - Received query: 'cars' with type 'others'
+2025-08-07 14:09:18,842 - __main__ - INFO - Received query: 'cars' with type 'all'

@@ -1,6 +1,14 @@
 import math
 import re
 from collections import Counter, defaultdict
+from functools import lru_cache
+
+import nltk
+from nltk.corpus import wordnet
+from nltk.stem import PorterStemmer
+
+nltk.download("wordnet")
+nltk.download("omw-1.4")
 
 
 def clean_text(text):
@@ -36,9 +44,13 @@ class TFIDFRanker:
         )  # {term: count_of_docs_containing_term}
 
         # Title weighting factor: terms in title get this much more weight
-        self.TITLE_WEIGHT = 2.0
+        self.TITLE_WEIGHT = 3.0
+        self.HEADING_WEIGHT = 2.0
+        self.BODY_WEIGHT = 1.0
+        self.ALT_TEXT_WEIGHT = 1.5
 
         self._build_frequencies()
+        self.stemmer = PorterStemmer()
 
     def _build_frequencies(self):
         """
@@ -66,14 +78,24 @@ class TFIDFRanker:
             for term in all_unique_doc_terms:
                 self.document_frequencies[term] += 1
 
-    def _calculate_tf(self, term, doc_id):
-        """Calculates Term Frequency (TF) for a term in a document."""
-        if doc_id not in self.term_frequencies or not self.term_frequencies[doc_id]:
-            return 0.0
+    def _calculate_tf(self, term, doc_id, field):
+        """Calculate TF for specific field with field weighting"""
+        doc = self.documents[doc_id]
+        text = ""
 
-        term_count = self.term_frequencies[doc_id].get(term, 0)
-        total_terms_in_doc = sum(self.term_frequencies[doc_id].values())
-        return term_count / total_terms_in_doc if total_terms_in_doc > 0 else 0.0
+        if field == "title":
+            text = doc["title"]
+            weight = self.TITLE_WEIGHT
+        elif field == "body":
+            text = doc["text"]
+            weight = self.BODY_WEIGHT
+        elif field == "alt":
+            text = " ".join(img.get("alt", "") for img in doc["images"])
+            weight = self.ALT_TEXT_WEIGHT
+
+        tokens = tokenize(clean_text(text))
+        term_count = tokens.count(term)
+        return (term_count / len(tokens)) * weight if tokens else 0.0
 
     def _calculate_idf(self, term):
         """Calculates Inverse Document Frequency (IDF) for a term."""
@@ -83,10 +105,13 @@ class TFIDFRanker:
         return math.log(self.corpus_size / (1 + num_docs_with_term)) + 1
 
     def calculate_tfidf(self, term, doc_id):
-        """Calculates the TF-IDF score for a term in a document."""
-        tf = self._calculate_tf(term, doc_id)
+        """Combine TF-IDF scores from all fields"""
+        tf_title = self._calculate_tf(term, doc_id, "title")
+        tf_body = self._calculate_tf(term, doc_id, "body")
+        tf_alt = self._calculate_tf(term, doc_id, "alt")
+
         idf = self._calculate_idf(term)
-        return tf * idf
+        return (tf_title + tf_body + tf_alt) * idf
 
     def _generate_highlighted_snippet(self, text, query_terms, max_length=150):
         """
@@ -134,6 +159,29 @@ class TFIDFRanker:
 
         return highlighted_snippet
 
+    @lru_cache(maxsize=1000)
+    def _expand_query(self, query):
+        """Expand query with synonyms and stem terms"""
+        expanded_terms = set()
+        try:
+            for term in tokenize(clean_text(query)):
+                # Add original term
+                expanded_terms.add(term)
+                # Add stemmed version
+                expanded_terms.add(self.stemmer.stem(term))
+                # Add synonyms if WordNet is available
+                try:
+                    for syn in wordnet.synsets(term):
+                        for lemma in syn.lemmas():
+                            expanded_terms.add(lemma.name().replace("_", " "))
+                except:
+                    pass  # Skip if WordNet fails
+        except Exception as e:
+            print(f"Error expanding query: {e}")
+            return tokenize(clean_text(query))  # Fallback to basic tokenization
+
+        return list(expanded_terms)
+
     def rank_documents(self, query):
         """
         Ranks documents based on the sum of TF-IDF scores for query terms.
@@ -145,7 +193,8 @@ class TFIDFRanker:
             list: A list of tuples (doc_id, score, url, title, highlighted_snippet, images)
                   sorted by score in descending order.
         """
-        query_tokens = tokenize(clean_text(query))
+        # query_tokens = tokenize(clean_text(query))
+        query_tokens = self._expand_query(query)
 
         if not query_tokens:
             return []

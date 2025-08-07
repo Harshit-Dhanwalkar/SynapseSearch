@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Search Results for "{{ query }}"</title>
+    <!-- Import a cyberpunk-style font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,34 +13,40 @@
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Configure Tailwind CSS to use the Cyberpunk Edgerunners color palette
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              'cyber-yellow': '#f8e602',
-              'cyber-green': '#4bff21',
-              'cyber-cyan': '#00f0ff',
-              'cyber-light-purple': '#f4d5fd', // Used for main text, almost white
-              'cyber-dark-purple': '#772289', // Used for borders, shadows, darker accents
-              'cyber-bg-dark': '#0d0d0d', // Very dark background
-              'cyber-card-bg': '#1a1a1a', // Slightly lighter dark for card backgrounds
-            }
-          }
-        }
-      }
+              "cyber-yellow": "#f8e602",
+              "cyber-green": "#4bff21",
+              "cyber-cyan": "#00f0ff",
+              "cyber-light-purple": "#f4d5fd",
+              "cyber-dark-purple": "#772289",
+              "cyber-bg-dark": "#0d0d0d",
+              "cyber-card-bg": "#1a1a1a",
+            },
+          },
+        },
+      };
     </script>
     <style>
       body {
         font-family: "Space Mono", monospace;
         background-color: #0d0d0d;
-        color: #f4d5fd; /* Main text color */
+        color: #f4d5fd;
       }
       .highlight {
-        background-color: #00f0ff; /* Neon cyan for highlight */
-        color: #0d0d0d; /* Dark text on highlight for contrast */
+        background-color: #00f0ff;
+        color: #0d0d0d;
         font-weight: bold;
         padding: 2px 0;
         border-radius: 2px;
+      }
+      .tab-active {
+        background-color: #1a1a1a; /* Using card color for active tab background */
+        color: #00f0ff; /* Neon cyan for active text */
+        border-color: #00f0ff; /* Neon cyan border for active tab */
       }
     </style>
   </head>
@@ -55,42 +62,99 @@
         </a>
       </div>
 
+      <!-- Tab bar for content types -->
+      <div class="flex border-b border-gray-600 mb-6 space-x-2">
+        <a
+          href="/search?query={{ query }}&type=all"
+          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'all' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
+        >
+          All
+        </a>
+        <a
+          href="/search?query={{ query }}&type=images"
+          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'images' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
+        >
+          Images
+        </a>
+        <a
+          href="/search?query={{ query }}&type=videos"
+          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'videos' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
+        >
+          Videos
+        </a>
+        <a
+          href="/search?query={{ query }}&type=others"
+          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'others' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
+        >
+          Others
+        </a>
+      </div>
+
       {% if message %}
       <p class="text-cyber-light-purple text-lg mb-4">{{ message }}</p>
-      {% elif results %}
+      {% elif results %} {% if content_type == 'images' %}
+      <!-- Special layout for images tab -->
+      <div
+        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+      >
+        {% for result in results %} {% for image in result.images %}
+        <div
+          class="rounded-lg overflow-hidden border border-cyber-dark-purple shadow-md shadow-cyber-dark-purple/50 transition duration-300 hover:shadow-lg hover:shadow-cyber-cyan/50"
+        >
+          <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer">
+            <img
+              src="{{ image.src }}"
+              alt="{{ image.alt }}"
+              class="w-full h-40 object-cover"
+              onerror="this.onerror=null;this.src='https://placehold.co/160x160/1f2937/d1d5db?text=No+Data';"
+            />
+          </a>
+        </div>
+        {% endfor %} {% endfor %}
+      </div>
+      {% else %}
+      <!-- Default layout for All, Videos, and Others tabs -->
       <div class="space-y-6">
         {% for result in results %}
         <div
           class="p-6 rounded-lg bg-cyber-card-bg bg-opacity-70 border border-cyber-dark-purple shadow-md shadow-cyber-dark-purple/50 transition duration-300 hover:shadow-lg hover:shadow-cyber-cyan/50"
         >
-          <h2
-            class="text-xl font-semibold text-cyber-cyan hover:underline mb-1 tracking-wide"
-          >
-            <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer"
-              >{{ result.title }}</a
+          <!-- A new div is added to wrap the text content -->
+          <div class="mb-4">
+            <h2
+              class="text-xl font-semibold text-cyber-cyan hover:underline mb-1 tracking-wide"
             >
-          </h2>
-          <p class="text-gray-400 text-sm mb-2">{{ result.url }}</p>
-          <p class="text-cyber-light-purple text-base">{{ result.snippet | safe }}</p>
+              <a
+                href="{{ result.url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ result.title }}</a
+              >
+            </h2>
+            <p class="text-gray-400 text-sm mb-2">{{ result.url }}</p>
+            <p class="text-cyber-light-purple text-base">
+              {{ result.snippet | safe }}
+            </p>
+            <p class="text-gray-500 text-xs mt-2">Score: {{ result.score }}</p>
+          </div>
 
-          {% if result.images %}
-          <div class="mt-4 flex flex-wrap gap-3">
+          <!-- Image container, hidden on image-only tab -->
+          {% if result.images and content_type != 'images' %}
+          <div class="flex flex-wrap gap-2">
             {% for image in result.images %}
             <img
               src="{{ image.src }}"
               alt="{{ image.alt }}"
-              class="w-24 h-24 object-cover rounded-md shadow-sm border border-cyber-dark-purple transition duration-300 hover:scale-110"
+              class="w-24 h-24 object-cover rounded-md shadow-sm border border-cyber-dark-purple"
               onerror="this.onerror=null;this.src='https://placehold.co/96x96/1f2937/d1d5db?text=No+Data';"
             />
             {% endfor %}
           </div>
           {% endif %}
-
-          <p class="text-gray-500 text-xs mt-2">Score: {{ result.score }}</p>
         </div>
         {% endfor %}
       </div>
-      {% else %}
+      {% endif %} {% else %}
       <p class="text-cyber-light-purple text-lg">
         No results found for "{{ query }}".
       </p>
