@@ -1,7 +1,8 @@
 import os
 import time
+from multiprocessing import Pool
 
-from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS  # Import from config
+from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
 from crawler import web_crawler
 from indexer import InvertedIndexer
 
@@ -17,8 +18,16 @@ def run_data_pipeline(start_urls, max_depth, max_pages):
 
     if not data_loaded or os.getenv("FORCE_RECRAWL") == "true":
         print("\n--- Starting Web Crawling ---")
+        with Pool(processes=min(4, len(start_urls))) as pool:
+            results = pool.starmap(
+                web_crawler,
+                [(url, max_depth, max_pages // len(start_urls)) for url in start_urls],
+            )
 
         all_crawled_data = {}
+        for result in results:
+            all_crawled_data.update(result)
+
         for url in start_urls:
             print(f"\nInitiating crawl for: {url}")
             crawled_data_from_seed = web_crawler(

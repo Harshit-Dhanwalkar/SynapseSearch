@@ -28,14 +28,30 @@
               "cyber-bg-dark": "#0d0d0d", // Very dark background
               "cyber-card-bg": "#1a1a1a", // Slightly lighter dark for card backgrounds
             },
+            fontFamily: {
+              "space-mono": ['"Space Mono"', "monospace"],
+            },
           },
         },
       };
     </script>
     <style>
+      :root {
+        --tw-colors-cyber-yellow: #f8e602;
+        --tw-colors-cyber-green: #4bff21;
+        --tw-colors-cyber-cyan: #00f0ff;
+        --tw-colors-cyber-light-purple: #f4d5fd;
+        --tw-colors-cyber-dark-purple: #772289;
+        --tw-colors-cyber-bg-dark: #0d0d0d;
+        --tw-colors-cyber-card-bg: #1a1a1a;
+      }
       body {
         font-family: "Space Mono", monospace;
-        background-color: #0d0d0d;
+        background-color: var(--tw-colors-cyber-bg-dark);
+        color: var(--tw-colors-cyber-light-purple);
+        transition:
+          background-color 0.3s ease,
+          color 0.3s ease;
       }
       .neon-glow {
         text-shadow:
@@ -59,13 +75,15 @@
         }
       }
       .light {
-        --tw-colors-cyber-bg-dark: #f4f4f4;
-        --tw-colors-cyber-card-bg: #ffffff;
+        --tw-colors-cyber-yellow: #d97706;
+        --tw-colors-cyber-green: #10b981;
+        --tw-colors-cyber-cyan: #2563eb;
         --tw-colors-cyber-light-purple: #333333;
         --tw-colors-cyber-dark-purple: #a78bfa;
-        --tw-colors-cyber-cyan: #2563eb;
-        --tw-colors-cyber-green: #10b981;
-        --tw-colors-cyber-yellow: #d97706;
+        --tw-colors-cyber-bg-dark: #f4f4f4;
+        --tw-colors-cyber-card-bg: #ffffff;
+        background-color: var(--tw-colors-cyber-bg-dark) !important;
+        color: var(--tw-colors-cyber-light-purple) !important;
       }
     </style>
   </head>
@@ -106,6 +124,13 @@
             required
             autocomplete="off"
           />
+          <button
+            id="voice-search"
+            type="button"
+            class="absolute right-14 top-1/2 transform -translate-y-1/2 p-2 text-cyber-cyan hover:text-cyber-green"
+          >
+            <i class="fas fa-microphone"></i>
+          </button>
           <div
             id="suggestions"
             class="absolute z-10 w-full mt-1 bg-cyber-card-bg border border-cyber-dark-purple rounded-lg shadow-lg hidden"
@@ -174,6 +199,10 @@
         const h1Element = document.getElementById("typewriter-h1");
         const pElement = document.getElementById("typewriter-p");
 
+        // Clear any existing content
+        h1Element.textContent = "";
+        pElement.textContent = "";
+
         const h1Text = "🔍 SynapseSearch";
         const pText = "Searching beyond the network.";
 
@@ -198,78 +227,163 @@
         typeWriter(h1Element, h1Text, 100, () => {
           typeWriter(pElement, pText, 50);
         });
-      });
 
-      // Autocomplete functionality
-      const searchInput = document.getElementById("search-input");
-      const suggestionsDiv = document.getElementById("suggestions");
+        // Get elements after DOM is loaded
+        const searchInput = document.getElementById("search-input");
+        const suggestionsDiv = document.getElementById("suggestions");
+        const themeToggle = document.getElementById("theme-toggle");
+        const icon = themeToggle.querySelector("i");
+        const voiceBtn = document.getElementById("voice-search");
 
-      searchInput.addEventListener("input", async function () {
-        const query = this.value.trim();
+        // Autocomplete functionality
+        searchInput.addEventListener("input", async function () {
+          const query = this.value.trim();
 
-        if (query.length > 2) {
-          const response = await fetch(
-            `/autocomplete?query=${encodeURIComponent(query)}`,
-          );
-          const suggestions = await response.json();
+          if (query.length > 2) {
+            const response = await fetch(
+              `/autocomplete?query=${encodeURIComponent(query)}`,
+            );
+            const suggestions = await response.json();
 
-          if (suggestions.length > 0) {
-            suggestionsDiv.innerHTML = suggestions
-              .map(
-                (s) => `
-          <div class="p-3 hover:bg-cyber-dark-purple cursor-pointer">${s}</div>
-        `,
-              )
-              .join("");
-            suggestionsDiv.classList.remove("hidden");
+            if (suggestions.length > 0) {
+              suggestionsDiv.innerHTML = suggestions
+                .map(
+                  (s) => `
+                          <div class="p-3 hover:bg-cyber-dark-purple cursor-pointer">${s}</div>
+                        `,
+                )
+                .join("");
+              suggestionsDiv.classList.remove("hidden");
 
-            // Add click handler for suggestions
-            suggestionsDiv.querySelectorAll("div").forEach((item) => {
-              item.addEventListener("click", function () {
-                searchInput.value = this.textContent;
-                suggestionsDiv.classList.add("hidden");
-                searchInput.focus();
+              // Add click handler for suggestions
+              suggestionsDiv.querySelectorAll("div").forEach((item) => {
+                item.addEventListener("click", function () {
+                  searchInput.value = this.textContent;
+                  suggestionsDiv.classList.add("hidden");
+                  searchInput.focus();
+                });
               });
-            });
+            } else {
+              suggestionsDiv.classList.add("hidden");
+            }
           } else {
             suggestionsDiv.classList.add("hidden");
           }
-        } else {
-          suggestionsDiv.classList.add("hidden");
-        }
-      });
+        });
 
-      // Hide suggestions when clicking outside
-      document.addEventListener("click", function (e) {
-        if (
-          !searchInput.contains(e.target) &&
-          !suggestionsDiv.contains(e.target)
-        ) {
-          suggestionsDiv.classList.add("hidden");
-        }
-      });
+        // Hide suggestions when clicking outside
+        document.addEventListener("click", function (e) {
+          if (
+            !searchInput.contains(e.target) &&
+            !suggestionsDiv.contains(e.target)
+          ) {
+            suggestionsDiv.classList.add("hidden");
+          }
+        });
 
-      // Dark/light mode toggle
-      const themeToggle = document.getElementById("theme-toggle");
-      const icon = themeToggle.querySelector("i");
-
-      // Check for saved theme preference
-      const currentTheme = localStorage.getItem("theme") || "dark";
-      if (currentTheme === "light") {
-        document.documentElement.classList.add("light");
-        icon.classList.replace("fa-moon", "fa-sun");
-      }
-
-      themeToggle.addEventListener("click", function () {
-        if (document.documentElement.classList.contains("light")) {
-          document.documentElement.classList.remove("light");
-          localStorage.setItem("theme", "dark");
-          icon.classList.replace("fa-sun", "fa-moon");
-        } else {
+        // Dark/light mode toggle
+        const currentTheme = localStorage.getItem("theme") || "dark";
+        if (currentTheme === "light") {
           document.documentElement.classList.add("light");
-          localStorage.setItem("theme", "light");
           icon.classList.replace("fa-moon", "fa-sun");
         }
+
+        themeToggle.addEventListener("click", function () {
+          document.documentElement.classList.toggle("light");
+          const isLight = document.documentElement.classList.contains("light");
+          localStorage.setItem("theme", isLight ? "light" : "dark");
+          icon.classList.replace(
+            isLight ? "fa-moon" : "fa-sun",
+            isLight ? "fa-sun" : "fa-moon",
+          );
+        });
+
+        // Voice Search
+        voiceBtn.addEventListener("click", () => {
+          const SpeechRecognition =
+            window.SpeechRecognition || window.webkitSpeechRecognition;
+
+          if (!SpeechRecognition) {
+            alert(
+              "Speech recognition is not supported in your browser. Try Chrome or Edge.",
+            );
+            return;
+          }
+
+          // Check if microphone access is allowed
+          navigator.permissions
+            .query({ name: "microphone" })
+            .then((permissionStatus) => {
+              if (permissionStatus.state === "denied") {
+                alert(
+                  "Microphone access was denied. Please reset permissions in your browser settings.",
+                );
+                return;
+              }
+              permissionStatus.onchange = () => {
+                if (permissionStatus.state === "denied") {
+                  voiceBtn.classList.add("text-red-500");
+                } else {
+                  voiceBtn.classList.remove("text-red-500");
+                }
+              };
+
+              const recognition = new SpeechRecognition();
+              recognition.lang = "en-US";
+              recognition.interimResults = false;
+              recognition.maxAlternatives = 1;
+
+              recognition.onstart = () => {
+                voiceBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+                voiceBtn.classList.add("text-cyber-green");
+                searchInput.placeholder = "Listening...";
+              };
+
+              recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                searchInput.value = transcript;
+                searchInput.placeholder = ">>> Enter search query...";
+                // searchInput.form.submit();
+              };
+
+              recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                voiceBtn.classList.remove("text-cyber-green");
+                searchInput.placeholder = ">>> Enter search query...";
+
+                let errorMessage = "Error occurred in voice recognition";
+                if (event.error === "not-allowed") {
+                  errorMessage =
+                    "Microphone access was denied. Please allow microphone access.";
+                } else if (event.error === "no-speech") {
+                  errorMessage = "No speech was detected. Try again.";
+                }
+
+                alert(errorMessage);
+              };
+
+              recognition.onend = () => {
+                voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                voiceBtn.classList.remove("text-cyber-green");
+                searchInput.placeholder = ">>> Enter search query...";
+              };
+
+              try {
+                recognition.start();
+              } catch (err) {
+                console.error("Recognition start failed:", err);
+                alert(
+                  "Failed to start voice recognition. Try refreshing the page.",
+                );
+              }
+            })
+            .catch((err) => {
+              console.error("Permission query failed:", err);
+              const recognition = new SpeechRecognition();
+              recognition.start();
+            });
+        });
       });
     </script>
   </body>

@@ -13,7 +13,6 @@
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Configure Tailwind CSS to use the Cyberpunk Edgerunners color palette
       tailwind.config = {
         theme: {
           extend: {
@@ -21,10 +20,13 @@
               "cyber-yellow": "#f8e602",
               "cyber-green": "#4bff21",
               "cyber-cyan": "#00f0ff",
-              "cyber-light-purple": "#f4d5fd",
-              "cyber-dark-purple": "#772289",
-              "cyber-bg-dark": "#0d0d0d",
-              "cyber-card-bg": "#1a1a1a",
+              "cyber-light-purple": "#f4d5fd", // Used for main text, almost white
+              "cyber-dark-purple": "#772289", // Used for borders, shadows, darker accents
+              "cyber-bg-dark": "#0d0d0d", // Very dark background
+              "cyber-card-bg": "#1a1a1a", // Slightly lighter dark for card backgrounds
+            },
+            fontFamily: {
+              "space-mono": ['"Space Mono"', "monospace"],
             },
           },
         },
@@ -33,24 +35,61 @@
     <style>
       body {
         font-family: "Space Mono", monospace;
-        background-color: #0d0d0d;
-        color: #f4d5fd;
+        background-color: var(--tw-colors-cyber-bg-dark);
+        color: var(--tw-colors-cyber-light-purple);
+      }
+      /* .neon-glow { */
+      /*   text-shadow: */
+      /*     0 0 2px var(--tw-colors-cyber-light-purple), */
+      /*     0 0 5px var(--tw-colors-cyber-light-purple); */
+      /* } */
+      .neon-glow {
+        text-shadow:
+          0 0 5px var(--tw-colors-cyber-cyan),
+          0 0 10px var(--tw-colors-cyber-cyan);
+      }
+      .typewriter-text::after {
+        content: "|";
+        animation: blink-caret 1s step-end infinite;
+        display: inline-block;
+        vertical-align: top;
+        margin-left: 2px;
+      }
+      @keyframes blink-caret {
+        from,
+        to {
+          color: transparent;
+        }
+        50% {
+          color: #00f0ff;
+        }
+      }
+      .light {
+        --tw-colors-cyber-bg-dark: #f4f4f4;
+        --tw-colors-cyber-card-bg: #ffffff;
+        --tw-colors-cyber-light-purple: #333333;
+        --tw-colors-cyber-dark-purple: #a78bfa;
+        --tw-colors-cyber-cyan: #2563eb;
+        --tw-colors-cyber-green: #10b981;
+        --tw-colors-cyber-yellow: #d97706;
       }
       .highlight {
-        background-color: #00f0ff;
-        color: #0d0d0d;
-        font-weight: bold;
-        padding: 2px 0;
-        border-radius: 2px;
+        background-color: var(--tw-colors-cyber-cyan);
+        color: var(--tw-colors-cyber-bg-dark);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
       }
-      .tab-active {
-        background-color: #1a1a1a; /* Using card color for active tab background */
-        color: #00f0ff; /* Neon cyan for active text */
-        border-color: #00f0ff; /* Neon cyan border for active tab */
+      .result-card {
+        transition: all 0.3s ease;
+      }
+      .result-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 240, 255, 0.2);
       }
     </style>
   </head>
-  <body class="p-6">
+
+  <body class="bg-cyber-bg-dark text-cyber-light-purple p-6">
     <div class="max-w-4xl mx-auto space-y-6">
       <h1 class="text-3xl font-bold text-cyber-light-purple mb-6">
         Search Results for "<span class="text-cyber-cyan">{{ query }}</span>"
@@ -93,7 +132,7 @@
       {% if message %}
       <p class="text-cyber-light-purple text-lg mb-4">{{ message }}</p>
       {% elif results %} {% if content_type == 'images' %}
-      <!-- Special layout for images tab -->
+      <!-- layout for images tab -->
       <div
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
       >
@@ -161,4 +200,42 @@
       {% endif %}
     </div>
   </body>
+
+  <!-- Filters -->
+  <script>
+    let isLoading = false;
+    let currentPage = 1;
+    const resultsContainer = document.querySelector(".results-container");
+
+    async function loadMore() {
+      if (isLoading) return;
+      isLoading = true;
+      currentPage++;
+
+      const response = await fetch(
+        `${window.location.pathname}?${new URLSearchParams({
+          ...Object.fromEntries(new URLSearchParams(window.location.search)),
+          page: currentPage,
+        })}`,
+      );
+
+      if (response.ok) {
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        const newResults = doc.querySelector(".results-container").innerHTML;
+        resultsContainer.innerHTML += newResults;
+      }
+      isLoading = false;
+    }
+
+    window.addEventListener("scroll", () => {
+      if (
+        window.innerHeight + window.scrollY >=
+        document.body.offsetHeight - 500
+      ) {
+        loadMore();
+      }
+    });
+  </script>
 </html>

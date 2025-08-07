@@ -12,16 +12,10 @@ from flask_limiter.util import get_remote_address
 
 from config import START_URLS
 from indexer import InvertedIndexer
+from query_processor import QueryProcessor
 from ranker import TFIDFRanker
 
 app = Flask(__name__)
-limiter = Limiter(
-    app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
-)
-
-# Initialize indexer globally
-indexer = InvertedIndexer()
-ranker = None  # Will be initialized after indexer loads documents
 
 # Configure cache
 cache = Cache(
@@ -31,6 +25,19 @@ cache = Cache(
     }
 )
 cache.init_app(app)
+
+# Configure rate limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="memory://",
+    default_limits=["200 per day", "50 per hour"],
+)
+
+# Initialize indexer globally
+indexer = InvertedIndexer()
+ranker = None  # Will be initialized after indexer loads documents
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +51,10 @@ file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+
+
+# spelling correction and semantic expansion
+query_processor = QueryProcessor()
 
 # --- Data Loading and Ranker Initialization ---
 # This code will execute once when the Flask application starts
@@ -82,75 +93,57 @@ def index():
 # @app.route("/search", methods=["GET"])
 def search():
     """Handles search queries and displays results with content type tabs."""
-    query = sanitize_query(request.args.get("query", ""))
-    # query = request.args.get("query", "").strip()
-    # Get the content type from the URL, defaulting to 'all'
-    content_type = request.args.get("type", "all").strip()
-    results = []
+    try:
+        raw_query = request.args.get("query", "")
+        query = query_processor.process(sanitize_query(raw_query))
+        # query = request.args.get("query", "").strip()
+        # Get the content type from the URL, defaulting to 'all'
+        content_type = request.args.get("type", "all").strip()
 
-    if not ranker:
-        message = (
-            "Search engine data not initialized. Please run `python3 main.py` first."
+        if not ranker:
+            return render_template(
+                "results.html",
+                query=query,
+                results=[],
+                message="Search engine not initialized",
+            )
+
+        ranked_docs = ranker.rank_documents(query)
+        results = []
+
+        for doc in ranked_docs:
+            result = {
+                "url": doc[2],
+                "title": doc[3] or doc[2],
+                "snippet": doc[4],
+                "score": f"{doc[1]:.2f}",
+                "images": doc[5] if len(doc) > 5 else [],
+            }
+            results.append(result)
+
+        # Apply filters
+        if content_type == "images":
+            results = [r for r in results if r.get("images")]
+        elif content_type == "others":
+            results = [r for r in results if not r.get("images")]
+
+        return render_template(
+            "results.html",
+            query=query,
+            results=results,
+            content_type=content_type,
+            message="" if results else "No results found",
         )
+
+    except Exception as e:
+        logger.error(f"Search error: {str(e)}")
         return render_template(
             "results.html",
             query=query,
             results=[],
-            message=message,
             content_type=content_type,
+            message="An error occurred during search",
         )
-
-    if query:
-        logger.info(f"Received query: '{query}' with type '{content_type}'")
-        try:
-            ranked_docs = ranker.rank_documents(query)
-
-            for doc_id, score, url, title, snippet, images in ranked_docs:
-                results.append(
-                    {
-                        "url": url,
-                        "title": title if title else url,
-                        "snippet": snippet,
-                        "score": f"{score:.4f}",
-                        "images": images,
-                    }
-                )
-
-            # Filter results based on the content_type parameter
-            if content_type == "images":
-                # Only keep results that have images
-                results = [r for r in results if r["images"]]
-            elif content_type == "videos":
-                # Placeholder for video results. In a real app, you would filter for videos.
-                # Here, we just return an empty list and a message.
-                results = []
-                message = "Video search is not yet implemented. Please select 'All' or 'Images'."
-            elif content_type == "others":
-                # Keep results that do not have images
-                results = [r for r in results if not r["images"]]
-
-            # Check if there are results after filtering
-            if not results and not "message" in locals():
-                message = "No results found for your query with the selected filter."
-            elif "message" in locals():
-                pass  # Message is already set for videos
-            else:
-                message = ""
-
-        except Exception as e:
-            logger.error(f"Search error: {e}")
-            results = []
-            message = "An error occurred during search. Please try again."
-    else:
-        message = "Please enter a search query."
-
-    return render_template(
-        "results.html",
-        query=query,
-        results=results,
-        message=message,
-        content_type=content_type,
-    )
 
 
 @app.route("/autocomplete")
@@ -180,6 +173,12 @@ def autocomplete():
     return jsonify(suggestions)
 
 
+# HACK: for debug
+@app.route("/ping")
+def ping():
+    return "pong"
+
+
 if __name__ == "__main__":
     os.makedirs("data", exist_ok=True)
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

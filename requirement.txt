@@ -6,5 +6,4 @@ beautifulsoup4
 nltk
 bleach
 symspellpy
-gensim
 opencv-python
