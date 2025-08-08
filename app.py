@@ -10,6 +10,13 @@ from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+from embedder import doc_id_to_index, faiss_index, model
+
+# TODO: Autocomplete Suggestions
+# from bisect import bisect_left
+# sorted_terms = sorted(inverted_index.keys())
+
+
 project_root = os.path.dirname(os.path.abspath(__file__))
 nltk_data_dir = os.path.join(project_root, "data", "nltk_data")
 if not os.path.exists(nltk_data_dir):
@@ -103,6 +110,18 @@ def search():
     query = query_processor.process(sanitize_query(raw_query))
     # Get the content type from the URL, defaulting to 'all'
     content_type = request.args.get("type", "all").strip()
+    mode = request.args.get("mode", "keyword")
+
+    if mode == "semantic":
+        q_vec = model.encode([raw_query], convert_to_numpy=True)
+        faiss.normalize_L2(q_vec)
+        D, I = faiss_index.search(q_vec, k=50)
+        doc_ids = [doc_id_to_index[i] for i in I[0]]
+        # optional: re-rank doc_ids by TF-IDF hybrid score
+        results = [build_result_from_docid(did) for did in doc_ids]
+    else:
+        results = ranker.rank_documents(query)
+
     try:
 
         if not ranker:
@@ -176,6 +195,20 @@ def autocomplete():
         return jsonify(suggestions)
 
     return jsonify(suggestions)
+
+
+# TODO: Autocomplete Suggestions
+# def prefix_suggestions(prefix, n=5):
+#     i = bisect_left(sorted_terms, prefix)
+#     results = []
+#     while (
+#         i < len(sorted_terms)
+#         and sorted_terms[i].startswith(prefix)
+#         and len(results) < n
+#     ):
+#         results.append(sorted_terms[i])
+#         i += 1
+#     return results
 
 
 # HACK: for debug

@@ -2,6 +2,21 @@
 
 SynapseSearch is an intelligent web search engine designed to connect information and deliver highly relevant results by mimicking neural network-like connections. It features a custom web crawler, an inverted indexer, a TF-IDF ranker, and a Flask-based web interface.
 
+## Installation
+
+```git
+git clone https://github.com/Harshit-Dhanwalkar/SynapseSearch.git
+```
+
+```python
+python3.11 -m pip venv .venv
+pip install -r requirement.txt
+```
+
+```bash
+sudo apt update && sudo apt install -y tesseract-ocr
+```
+
 ## TODO: Future Enhancements (Advanced Search Capabilities) 🚀
 
 - [ ] Image Indexer Enhancement:

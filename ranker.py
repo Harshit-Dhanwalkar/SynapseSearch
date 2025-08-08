@@ -7,6 +7,13 @@ from functools import lru_cache
 import nltk
 from nltk.stem import PorterStemmer
 
+# TODO: Faster ranking (vectorize TF-IDF) Switch from Python counters loops → sklearn TfidfVectorizer + sparse matrix
+# from sklearn.feature_extraction.text import TfidfVectorizer
+# corpus = [doc['title'] + " " + doc['text'] for doc in documents.values()]
+# vectorizer = TfidfVectorizer(max_features=50000)
+# X = vectorizer.fit_transform(corpus)  # sparse (n_docs x n_terms)
+# persist X (sparse) using scipy.sparse.save_npz
+
 local_nltk_data_path = os.path.join(os.path.dirname(__file__), "data", "nltk_data")
 if local_nltk_data_path not in nltk.data.path:
     nltk.data.path.append(local_nltk_data_path)
@@ -239,6 +246,17 @@ class TFIDFRanker:
             + (" ..." if end_index < len(words) else "")
         )
         return final_snippet
+
+    # TODO: Instead of simple window, use scoring per sentence
+    # def best_snippet(text, query_terms, k=1):
+    #     sentences = re.split(r"(?<=[.!?])\s+", text)
+    #     scores = []
+    #     for s in sentences:
+    #         words = set(re.findall(r"\w+", s.lower()))
+    #         overlap = sum(1 for t in query_terms if t in words)
+    #         scores.append((overlap, s))
+    #     best = sorted(scores, reverse=True)[:k]
+    #     return " ... ".join(s for _, s in best)
 
     def calculate_cosine_similarity(self, doc_vector, query_vector):
         # This is the core of the VSM
