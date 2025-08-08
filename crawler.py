@@ -1,5 +1,6 @@
 import re
 import time
+import urllib.robotparser
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -21,13 +22,14 @@ def clean_text(text):
     return text
 
 
-def web_crawler(start_url, max_depth=2, max_pages=50):
+def web_crawler(start_url, robots_parser, max_depth=2, max_pages=50):
     """
     A simple web crawler that fetches pages, extracts text, titles, and images.
     It stores crawled content and URLs.
 
     Args:
         start_url (str): The URL to start crawling from.
+        robots_parser (urllib.robotparser.RobotFileParser): An object to check robots.txt rules.
         max_depth (int): The maximum depth to crawl (number of link clicks).
         max_pages (int): The maximum number of pages to crawl.
 
@@ -47,6 +49,12 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
 
         # Skip if already visited or depth limit reached
         if current_url in visited_urls or depth > max_depth:
+            continue
+
+        # Check robots.txt rules for the current URL before crawling
+        if robots_parser and not robots_parser.can_fetch("*", current_url):
+            print(f"Skipping {current_url} as per robots.txt rules.")
+            visited_urls.add(current_url)  # Mark as visited to avoid re-adding to queue
             continue
 
         print(
@@ -208,9 +216,29 @@ def web_crawler(start_url, max_depth=2, max_pages=50):
     return crawled_data
 
 
+def get_robots_parser(url):
+    """Fetches and returns a robotparser object for a given URL with a timeout."""
+    robots_url = urljoin(url, "/robots.txt")
+    try:
+        # Fetch the robots.txt content with a timeout
+        response = requests.get(robots_url, timeout=5)
+        response.raise_for_status()
+
+        rp = urllib.robotparser.RobotFileParser()
+        rp.parse(response.text.splitlines())
+        return rp
+    except requests.exceptions.RequestException as e:
+        print(f"Could not fetch robots.txt for {url}: {e}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred while parsing robots.txt for {url}: {e}")
+        return None
+
+
 if __name__ == "__main__":
     start_url = "http://quotes.toscrape.com/"
-    crawled_data = web_crawler(start_url, max_depth=1, max_pages=10)
+    robots_parser = get_robots_parser(start_url)
+    crawled_data = web_crawler(start_url, robots_parser, max_depth=1, max_pages=10)
 
     print("\n--- Crawled Content Summary ---")
     for url, data in crawled_data.items():
