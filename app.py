@@ -99,12 +99,11 @@ def index():
 # @app.route("/search", methods=["GET"])
 def search():
     """Handles search queries and displays results with content type tabs."""
+    raw_query = request.args.get("query", "")
+    query = query_processor.process(sanitize_query(raw_query))
+    # Get the content type from the URL, defaulting to 'all'
+    content_type = request.args.get("type", "all").strip()
     try:
-        raw_query = request.args.get("query", "")
-        query = query_processor.process(sanitize_query(raw_query))
-        # query = request.args.get("query", "").strip()
-        # Get the content type from the URL, defaulting to 'all'
-        content_type = request.args.get("type", "all").strip()
 
         if not ranker:
             return render_template(
@@ -142,10 +141,10 @@ def search():
         )
 
     except Exception as e:
-        logger.error(f"Search error: {str(e)}")
+        logger.error(f"Search error: {e}")
         return render_template(
             "results.html",
-            query=query,
+            query=sanitize_query(raw_query),
             results=[],
             content_type=content_type,
             message="An error occurred during search",

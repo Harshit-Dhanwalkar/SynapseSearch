@@ -18,21 +18,43 @@ class QueryProcessor:
             os.path.dirname(__file__), "data", "frequency_dict.txt"
         )
         if os.path.exists(dict_path):
-            self.sym_spell.load_dictionary(dict_path, term_index=0, count_index=1)
+            try:
+                self.sym_spell.load_dictionary(dict_path, term_index=0, count_index=1)
+            except Exception:
+                # If the dict is malformed or unreadable, don't crash - continue without it
+                pass
 
         self.stopwords = self._load_stopwords(stopwords_file)
         self.stemmer = PorterStemmer()
 
     def process(self, query, expand_synonyms=True):
-        query = self.correct_spelling(query)
+        if not query:
+            return ""
+
+        try:
+            query = self.correct_spelling(query)
+        except Exception:
+            # if SymSpell fails for any reason, continue with original
+            pass
         tokens = self.preprocess_query(query)
+        if not tokens:
+            return ""
         tokens = [self.stemmer.stem(t) for t in tokens]
 
         if expand_synonyms and len(tokens) > 1:
             expanded_tokens = set(tokens)
             for t in tokens:
-                expanded_tokens.update(self.get_synonyms(t))
-            tokens = list(expanded_tokens)
+                expanded_tokens.extend([t, t])
+                # add synonyms (get_synonyms returns a list)
+                try:
+                    syns = self.get_synonyms(t)
+                except Exception:
+                    syns = []
+                # only append synonyms that are not equal to the token already present
+                for s in syns:
+                    if s != t:
+                        expanded_tokens.append(s)
+            tokens = expanded_tokens
 
         return " ".join(tokens)
 
@@ -47,24 +69,35 @@ class QueryProcessor:
         return stopwords
 
     def correct_spelling(self, query):
-        suggestions = self.sym_spell.lookup_compound(query, max_edit_distance=2)
-        return suggestions[0].term if suggestions else query
+        try:
+            suggestions = self.sym_spell.lookup_compound(query, max_edit_distance=2)
+            return suggestions[0].term if suggestions else query
+        except Exception:
+            return query
 
     def get_synonyms(self, word):
-        synonyms = set()
-        # Skip very short or non-alpha words
-        if len(word) <= 2 or not word.isalpha():
-            return synonyms
+        result = []
+        if not word or len(word) <= 2 or not word.isalpha():
+            return result
 
+        seen = set()
         for syn in wordnet.synsets(word, pos=wordnet.NOUN):
             for lemma in syn.lemmas():
-                if lemma.count() >= 2:
-                    s = lemma.name().replace("_", " ").lower()
-                    if s != word and s.isalpha() and len(s) > 2:
-                        synonyms.add(self.stemmer.stem(s))
-                        if len(synonyms) >= 3:
-                            return synonyms
-        return synonyms
+                if lemma.count() < 2:
+                    continue  # skip rare/obscure lemma senses
+                s = lemma.name().replace("_", " ").lower()
+                if not s.isalpha() or len(s) <= 2:
+                    continue
+                stemmed = self.stemmer.stem(s)
+                if stemmed == word:
+                    continue
+                if stemmed in seen:
+                    continue
+                seen.add(stemmed)
+                result.append(stemmed)
+                if len(result) >= max_syn:
+                    return result
+        return result
 
     def expand_with_synonyms(self, query):
         #     terms = set(query.split())
@@ -82,21 +115,25 @@ class QueryProcessor:
         #                         if len(synonym.split()) <= 2 and len(synonym) < 20:
         #                             terms.add(synonym)
         #     return " ".join(terms)
-        pass
+        query = re.sub(r"[^\w\s]", "", query.lower())
+        tokens = [t for t in query.split() if t and t not in self.stopwords]
+        expanded = []
+        for t in tokens:
+            expanded.append(t)
+            expanded.extend(self.get_synonyms(t))
+        return expanded
 
     def preprocess_query(self, query, expand_synonyms=False):
         # Clean and tokenize the query
         query = re.sub(r"[^\w\s]", "", query.lower())
-        tokens = query.split()
+        # tokens = query.split()
 
         # Remove stopwords
-        # tokens = [token for token in tokens if token not in self.stopwords]
-        #
-        # if expand_synonyms:
-        #     expanded_tokens = set(tokens)
-        #     for token in tokens:
-        #         expanded_tokens.update(self.get_synonyms(token))
-        #     return list(expanded_tokens)
-        #
-        # return tokens
-        return [t for t in tokens if t not in self.stopwords]
+        tokens = [t for t in query.split() if t and t not in self.stopwords]
+        if expand_synonyms:
+            expanded = []
+            for t in tokens:
+                expanded.append(t)
+                expanded.extend(self.get_synonyms(t))
+            return expanded
+        return tokens
