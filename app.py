@@ -10,6 +10,12 @@ from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+project_root = os.path.dirname(os.path.abspath(__file__))
+nltk_data_dir = os.path.join(project_root, "data", "nltk_data")
+if not os.path.exists(nltk_data_dir):
+    os.makedirs(nltk_data_dir)
+os.environ["NLTK_DATA"] = nltk_data_dir
+
 from config import START_URLS
 from indexer import InvertedIndexer
 from query_processor import QueryProcessor

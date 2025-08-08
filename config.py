@@ -7,7 +7,6 @@ START_URLS = [
     "https://en.wikipedia.org/wiki/Car",
     "https://www.motor1.com/",
     "https://www.cnet.com/roadshow/",
-    "https://www.goodreads.com/shelf/show/fiction",
 ]
 
 MAX_CRAWL_DEPTH = 2

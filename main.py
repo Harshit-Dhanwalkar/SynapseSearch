@@ -3,6 +3,12 @@ import os
 import time
 from multiprocessing import Pool
 
+project_root = os.path.dirname(os.path.abspath(__file__))
+nltk_data_dir = os.path.join(project_root, "data", "nltk_data")
+if not os.path.exists(nltk_data_dir):
+    os.makedirs(nltk_data_dir)
+os.environ["NLTK_DATA"] = nltk_data_dir
+
 from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
 from crawler import get_robots_parser, web_crawler
 from indexer import InvertedIndexer
