@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 from functools import lru_cache
 
 import nltk
+from nltk.stem import PorterStemmer
 
 local_nltk_data_path = os.path.join(os.path.dirname(__file__), "data", "nltk_data")
 if local_nltk_data_path not in nltk.data.path:
@@ -55,23 +56,23 @@ class TFIDFRanker:
         self.TITLE_WEIGHT = 3.0
         self.HEADING_WEIGHT = 1.5
         self.ALT_TEXT_WEIGHT = 1.0
-
+        self.stemmer = PorterStemmer()
         self._build_frequencies()
+        self.document_vectors = {}
+        self._build_document_vectors()
 
     def _build_frequencies(self):
         """
-        Processes documents to build term frequencies and document frequencies.
-        This is separate from building the inverted index.
+        Build term and document frequencies from documents.
         """
         for doc_id, doc in self.documents.items():
-            # Combine all relevant text for TF calculation, with weighting
             full_text = []
             full_text.extend(tokenize(clean_text(doc["text"])))
             full_text.extend(
                 tokenize(clean_text(doc["title"])) * int(self.TITLE_WEIGHT)
             )
 
-            # Add alt text from images with a specific weight
+            # Alt text from images with a specific weight
             for image in doc.get("images", []):
                 if image.get("alt"):
                     full_text.extend(
@@ -100,6 +101,17 @@ class TFIDFRanker:
         idf = self._calculate_idf(term)
         return tf * idf
 
+    def _build_document_vectors(self):
+        """
+        Build TF-IDF vectors for all documents.
+        """
+        for doc_id, term_counts in self.term_frequencies.items():
+            doc_vector = {}
+            for term, tf in term_counts.items():
+                idf = self._calculate_idf(term)
+                doc_vector[term] = tf * idf
+            self.document_vectors[doc_id] = doc_vector
+
     def rank_documents(self, query):
         """
         Ranks documents based on a search query using the TF-IDF model.
@@ -110,7 +122,8 @@ class TFIDFRanker:
         Returns:
             list: A sorted list of (doc_id, score, url, title, snippet, images).
         """
-        query_terms = tokenize(clean_text(query))
+        # query_terms = tokenize(clean_text(query))
+        query_terms = [self.stemmer.stem(t) for t in tokenize(clean_text(query))]
         document_scores = defaultdict(float)
 
         for term in query_terms:
@@ -122,7 +135,7 @@ class TFIDFRanker:
                     tf = self.term_frequencies.get(doc_id, {}).get(term, 0)
                     document_scores[doc_id] += tf * idf
 
-        # Create a list of tuples for sorting, including URL and title
+        #  List of tuples for sorting, including URL and title
         ranked_results = [
             (
                 doc_id,
@@ -145,6 +158,44 @@ class TFIDFRanker:
             final_results.append((doc_id, score, url, title, snippet, images))
 
         return final_results
+
+    def get_query_vector(self, query_terms):
+        """
+        Build a TF-IDF vector for the query.
+        """
+        query_vector = defaultdict(float)
+        for term in query_terms:
+            tf = query_terms.count(term)
+            idf = self._calculate_idf(term)
+            query_vector[term] = tf * idf
+        return query_vector
+
+    def rank(self, query):
+        """
+        Rank documents using Vector Space Model (cosine similarity).
+        """
+        query_terms = [self.stemmer.stem(t) for t in tokenize(clean_text(query))]
+        query_vector = self.get_query_vector(query_terms)
+
+        ranked_results = []
+        for doc_id, doc_vector in self.document_vectors.items():
+            score = self.calculate_cosine_similarity(doc_vector, query_vector)
+            if score > 0:
+                ranked_results.append(
+                    (
+                        doc_id,
+                        score,
+                        self.documents[doc_id]["url"],
+                        self.documents[doc_id]["title"],
+                        self._generate_snippet(
+                            self.documents[doc_id]["text"], query_terms
+                        ),
+                        self.documents[doc_id]["images"],
+                    )
+                )
+
+        ranked_results.sort(key=lambda x: x[1], reverse=True)
+        return ranked_results
 
     def _generate_snippet(self, text, query_terms, snippet_length=200):
         """
@@ -181,13 +232,28 @@ class TFIDFRanker:
             else:
                 highlighted_snippet.append(word)
 
-        # Add ellipsis if the snippet doesn't start or end with the document boundaries
+        # Ellipsis if the snippet doesn't start or end with the document boundaries
         final_snippet = (
             ("... " if start_index > 0 else "")
             + " ".join(highlighted_snippet)
             + (" ..." if end_index < len(words) else "")
         )
         return final_snippet
+
+    def calculate_cosine_similarity(self, doc_vector, query_vector):
+        # This is the core of the VSM
+        dot_product = sum(
+            doc_vector[term] * query_vector[term] for term in query_vector
+        )
+
+        # Calculate the magnitude of each vector
+        doc_magnitude = math.sqrt(sum(v**2 for v in doc_vector.values()))
+        query_magnitude = math.sqrt(sum(v**2 for v in query_vector.values()))
+
+        if doc_magnitude == 0 or query_magnitude == 0:
+            return 0
+
+        return dot_product / (doc_magnitude * query_magnitude)
 
 
 if __name__ == "__main__":
@@ -219,7 +285,7 @@ if __name__ == "__main__":
             "url": "http://example.com/doc2",
             "title": "Warm Sun",
             "text": "The sun is shining. The weather is warm and bright.",
-            "images": [],  # No images for this document
+            "images": [],
         },
         "3": {
             "url": "http://example.com/doc3",
@@ -234,32 +300,6 @@ if __name__ == "__main__":
         },
     }
 
-    # Sample inverted index (simulated for testing)
-    sample_inverted_index = {
-        "cat": {"0": [2, 7, 10]},
-        "sleeps": {"0": [3]},
-        "quick": {"1": [1, 9], "3": [1]},
-        "fox": {"1": [3, 6], "0": [12]},  # Added 'fox' from alt text for doc 0
-        "jumps": {"1": [4]},
-        "over": {"1": [5]},
-        "lazy": {"1": [6], "0": [1, 8]},  # 'lazy' from text and title
-        "dog": {"1": [8], "3": [2, 5]},
-        "the": {"0": [0, 6, 9], "1": [0, 7], "2": [0, 4]},
-        "is": {"0": [4], "1": [3, 7], "2": [2, 6]},
-        "a": {"1": [0], "0": [5]},  # 'a' from alt text
-        "fast": {"1": [9], "3": [4]},
-        "sun": {"2": [1], "3": [7]},
-        "shining": {"2": [3]},
-        "weather": {"2": [5]},
-        "warm": {"2": [7]},
-        "playing": {"3": [6]},
-        "picture": {"0": [11], "1": [12]},
-        "of": {"0": [12], "1": [13]},
-        "running": {"1": [14]},
-        "running": {"1": [14]},
-    }
-    # Fix some of the inverted index data to make sense with the snippet generation logic
-    # For a real application, this would be dynamically generated.
     sample_inverted_index = {
         "cat": {"0": [2, 7, 10]},
         "sleeps": {"0": [3]},
@@ -289,6 +329,10 @@ if __name__ == "__main__":
     print("--- TF-IDF Ranking Example (with Title Weighting & Image Alt Text) ---")
     query = "quick dog running"
     ranked_docs = ranker.rank_documents(query)
+
+    print("\n--- VSM Ranking ---")
+    for res in ranker.rank(query):
+        print(res)
 
     print(f"Query: '{query}'")
     for doc_id, score, url, title, snippet, images in ranked_docs:
