@@ -1,15 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Search Results for "{{ query }}"</title>
-    <!-- Import a cyberpunk-style font from Google Fonts -->
+    <title>Results for "{{ query }}" - SynapseSearch</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
       rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,209 +36,247 @@
       };
     </script>
     <style>
+      /* --- Theme-specific styles --- */
+      html[data-theme="dark"] body {
+        background-color: #1a202c;
+        color: #e2e8f0;
+      }
+
+      html[data-theme="light"] body {
+        background-color: #ffffff;
+        color: #2d3748;
+      }
+
+      html[data-theme="cyberpunk"] body {
+        background-color: #0d0d0d;
+        color: #f4d5fd;
+      }
+
+      html[data-theme="cyberpunk"] .search-input {
+        background-color: #1a1a1a;
+        color: #f4d5fd;
+        border-color: #772289;
+      }
+
+      html[data-theme="cyberpunk"] .result-item {
+        background-color: #1a1a1a;
+        color: #f4d5fd;
+        border-color: #772289;
+      }
+
+      html[data-theme="cyberpunk"] .result-item a {
+        color: #00f0ff; /* Cyber cyan for links */
+      }
+
       body {
-        font-family: "Space Mono", monospace;
-        background-color: var(--tw-colors-cyber-bg-dark);
-        color: var(--tw-colors-cyber-light-purple);
+        @apply transition-colors duration-500;
       }
-      /* .neon-glow { */
-      /*   text-shadow: */
-      /*     0 0 2px var(--tw-colors-cyber-light-purple), */
-      /*     0 0 5px var(--tw-colors-cyber-light-purple); */
-      /* } */
-      .neon-glow {
-        text-shadow:
-          0 0 5px var(--tw-colors-cyber-cyan),
-          0 0 10px var(--tw-colors-cyber-cyan);
+
+      .search-input {
+        @apply transition-colors duration-500;
       }
-      .typewriter-text::after {
-        content: "|";
-        animation: blink-caret 1s step-end infinite;
-        display: inline-block;
-        vertical-align: top;
-        margin-left: 2px;
+
+      .result-item {
+        @apply transition-colors duration-500;
       }
-      @keyframes blink-caret {
-        from,
+
+      .tab-button.active {
+        border-bottom: 2px solid #1a73e8;
+        color: #1a73e8;
+        font-weight: 500;
+      }
+
+      .tab-button {
+        transition: all 0.2s ease-in-out;
+        padding: 0.5rem 1rem;
+        margin: 0 0.5rem;
+        cursor: pointer;
+      }
+
+      .tab-button:hover {
+        color: #1a73e8;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
         to {
-          color: transparent;
-        }
-        50% {
-          color: #00f0ff;
+          opacity: 1;
+          transform: translateY(0);
         }
       }
-      .light {
-        --tw-colors-cyber-bg-dark: #f4f4f4;
-        --tw-colors-cyber-card-bg: #ffffff;
-        --tw-colors-cyber-light-purple: #333333;
-        --tw-colors-cyber-dark-purple: #a78bfa;
-        --tw-colors-cyber-cyan: #2563eb;
-        --tw-colors-cyber-green: #10b981;
-        --tw-colors-cyber-yellow: #d97706;
-      }
-      .highlight {
-        background-color: var(--tw-colors-cyber-cyan);
-        color: var(--tw-colors-cyber-bg-dark);
-        padding: 0.1rem 0.3rem;
-        border-radius: 0.2rem;
-      }
-      .result-card {
-        transition: all 0.3s ease;
-      }
-      .result-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0, 240, 255, 0.2);
+
+      .result-item {
+        animation: fadeIn 0.5s ease-out;
       }
     </style>
   </head>
-
-  <body class="bg-cyber-bg-dark text-cyber-light-purple p-6">
-    <div class="max-w-4xl mx-auto space-y-6">
-      <h1 class="text-3xl font-bold text-cyber-light-purple mb-6">
-        Search Results for "<span class="text-cyber-cyan">{{ query }}</span>"
-      </h1>
-
-      <div class="mb-6">
-        <a href="/" class="text-cyber-cyan hover:underline">
-          &lt;-- Back to Terminal
-        </a>
-      </div>
-
-      <!-- Tab bar for content types -->
-      <div class="flex border-b border-gray-600 mb-6 space-x-2">
-        <a
-          href="/search?query={{ query }}&type=all"
-          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'all' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
-        >
-          All
-        </a>
-        <a
-          href="/search?query={{ query }}&type=images"
-          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'images' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
-        >
-          Images
-        </a>
-        <a
-          href="/search?query={{ query }}&type=videos"
-          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'videos' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
-        >
-          Videos
-        </a>
-        <a
-          href="/search?query={{ query }}&type=others"
-          class="px-4 py-2 border-b-2 text-sm font-semibold rounded-t-lg transition duration-200 ease-in-out {% if content_type == 'others' %}tab-active{% else %}border-transparent text-gray-400 hover:text-cyber-cyan{% endif %}"
-        >
-          Others
-        </a>
-      </div>
-
-      {% if message %}
-      <p class="text-cyber-light-purple text-lg mb-4">{{ message }}</p>
-      {% elif results %} {% if content_type == 'images' %}
-      <!-- layout for images tab -->
+  <body class="font-sans">
+    <button
+      id="theme-toggle"
+      class="fixed top-4 right-4 p-2 rounded-full text-xl z-50 focus:outline-none transition-colors duration-300"
+    >
+      <i class="fas fa-sun text-yellow-500 hidden" data-theme-icon="light"></i>
+      <i class="fas fa-moon text-gray-400 hidden" data-theme-icon="dark"></i>
+      <i
+        class="fas fa-bolt text-blue-400 hidden"
+        data-theme-icon="cyberpunk"
+      ></i>
+    </button>
+    <header class="shadow-sm py-4">
       <div
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+        class="flex items-center justify-between w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl md:max-w-6xl"
       >
-        {% for result in results %} {% for image in result.images %}
-        <div
-          class="rounded-lg overflow-hidden border border-cyber-dark-purple shadow-md shadow-cyber-dark-purple/50 transition duration-300 hover:shadow-lg hover:shadow-cyber-cyan/50"
-        >
-          <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer">
-            <img
-              src="{{ image.src }}"
-              alt="{{ image.alt }}"
-              class="w-full h-40 object-cover"
-              onerror="this.onerror=null;this.src='https://placehold.co/160x160/1f2937/d1d5db?text=No+Data';"
-            />
-          </a>
-        </div>
-        {% endfor %} {% endfor %}
-      </div>
-      {% else %}
-      <!-- Default layout for All, Videos, and Others tabs -->
-      <div class="space-y-6">
-        {% for result in results %}
-        <div
-          class="p-6 rounded-lg bg-cyber-card-bg bg-opacity-70 border border-cyber-dark-purple shadow-md shadow-cyber-dark-purple/50 transition duration-300 hover:shadow-lg hover:shadow-cyber-cyan/50"
-        >
-          <!-- A new div is added to wrap the text content -->
-          <div class="mb-4">
-            <h2
-              class="text-xl font-semibold text-cyber-cyan hover:underline mb-1 tracking-wide"
-            >
-              <a
-                href="{{ result.url }}"
-                target="_blank"
-                rel="noopener noreferrer"
-                >{{ result.title }}</a
+        <a href="/" class="text-2xl font-bold text-blue-600">SynapseSearch</a>
+        <div class="flex-grow max-w-4xl mx-auto px-4">
+          <form action="/search" method="get" class="flex items-center">
+            <div class="relative flex-grow">
+              <input
+                type="text"
+                name="query"
+                value="{{ query }}"
+                class="search-input w-full py-2 pl-10 pr-4 text-base border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <svg
+                class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-            </h2>
-            <p class="text-gray-400 text-sm mb-2">{{ result.url }}</p>
-            <p class="text-cyber-light-purple text-base">
-              {{ result.snippet | safe }}
-            </p>
-            <p class="text-gray-500 text-xs mt-2">Score: {{ result.score }}</p>
-          </div>
-
-          <!-- Image container, hidden on image-only tab -->
-          {% if result.images and content_type != 'images' %}
-          <div class="flex flex-wrap gap-2">
-            {% for image in result.images %}
-            <img
-              src="{{ image.src }}"
-              alt="{{ image.alt }}"
-              class="w-24 h-24 object-cover rounded-md shadow-sm border border-cyber-dark-purple"
-              onerror="this.onerror=null;this.src='https://placehold.co/96x96/1f2937/d1d5db?text=No+Data';"
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                ></path>
+              </svg>
+            </div>
+            <input
+              type="hidden"
+              name="type"
+              value="{{ content_type }}"
+              id="content-type-input"
             />
+            <button type="submit" class="hidden">Search</button>
+          </form>
+        </div>
+        <div></div>
+      </div>
+      <div class="border-b border-gray-200 mt-4">
+        <div
+          class="flex justify-start w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl md:max-w-6xl"
+        >
+          <button
+            onclick="changeContentType('all')"
+            class="tab-button {% if content_type == 'all' %}active{% endif %}"
+          >
+            All
+          </button>
+          <button
+            onclick="changeContentType('images')"
+            class="tab-button {% if content_type == 'images' %}active{% endif %}"
+          >
+            Images
+          </button>
+          <button
+            onclick="changeContentType('others')"
+            class="tab-button {% if content_type == 'others' %}active{% endif %}"
+          >
+            Others
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main
+      class="w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl md:max-w-6xl mt-8"
+    >
+      {% if message %}
+      <p class="text-center text-gray-600 text-lg">{{ message }}</p>
+      {% else %}
+      <p class="text-gray-600 mb-6">About {{ results | length }} results</p>
+      <div class="results-container">
+        {% for result in results %}
+        <div class="p-6 rounded-lg shadow-md mb-6 result-item">
+          <a
+            href="{{ result.url }}"
+            class="text-blue-700 hover:underline text-xl font-medium"
+          >
+            {{ result.title }}
+          </a>
+          <p class="text-sm text-green-700 truncate">
+            {{ result.url | url_domain }}
+          </p>
+          <p class="mt-2 text-base leading-relaxed">
+            {{ result.snippet | safe }}
+          </p>
+
+          {% if result.images %}
+          <div
+            class="flex overflow-x-auto space-x-4 p-2 mt-4 bg-gray-50 rounded-lg shadow-inner"
+          >
+            {% for image in result.images %}
+            <div class="flex-shrink-0 w-32 h-32 md:w-48 md:h-48">
+              <a href="{{ image.src }}" target="_blank">
+                <img
+                  src="{{ image.src }}"
+                  alt="{{ image.alt }}"
+                  class="w-full h-full object-cover rounded-lg border-2 border-gray-200"
+                />
+              </a>
+            </div>
             {% endfor %}
           </div>
           {% endif %}
         </div>
         {% endfor %}
       </div>
-      {% endif %} {% else %}
-      <p class="text-cyber-light-purple text-lg">
-        No results found for "{{ query }}".
-      </p>
       {% endif %}
-    </div>
+    </main>
+
+    <script>
+      // Theme switching logic
+      const html = document.documentElement;
+      const themeToggle = document.getElementById("theme-toggle");
+      const themeIcons = {
+        dark: document.querySelector('[data-theme-icon="dark"]'),
+        light: document.querySelector('[data-theme-icon="light"]'),
+        cyberpunk: document.querySelector('[data-theme-icon="cyberpunk"]'),
+      };
+      const themes = ["dark", "light", "cyberpunk"];
+
+      function getSavedTheme() {
+        return localStorage.getItem("theme") || "dark";
+      }
+
+      function setTheme(theme) {
+        html.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
+        Object.values(themeIcons).forEach((icon) =>
+          icon.classList.add("hidden"),
+        );
+        themeIcons[theme].classList.remove("hidden");
+      }
+
+      function cycleTheme() {
+        const currentTheme = getSavedTheme();
+        const currentIndex = themes.indexOf(currentTheme);
+        const nextIndex = (currentIndex + 1) % themes.length;
+        const nextTheme = themes[nextIndex];
+        setTheme(nextTheme);
+      }
+
+      setTheme(getSavedTheme());
+      themeToggle.addEventListener("click", cycleTheme);
+
+      function changeContentType(type) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("type", type);
+        window.location.href = url.toString();
+      }
+    </script>
   </body>
-
-  <!-- Filters -->
-  <script>
-    let isLoading = false;
-    let currentPage = 1;
-    const resultsContainer = document.querySelector(".results-container");
-
-    async function loadMore() {
-      if (isLoading) return;
-      isLoading = true;
-      currentPage++;
-
-      const response = await fetch(
-        `${window.location.pathname}?${new URLSearchParams({
-          ...Object.fromEntries(new URLSearchParams(window.location.search)),
-          page: currentPage,
-        })}`,
-      );
-
-      if (response.ok) {
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-        const newResults = doc.querySelector(".results-container").innerHTML;
-        resultsContainer.innerHTML += newResults;
-      }
-      isLoading = false;
-    }
-
-    window.addEventListener("scroll", () => {
-      if (
-        window.innerHeight + window.scrollY >=
-        document.body.offsetHeight - 500
-      ) {
-        loadMore();
-      }
-    });
-  </script>
 </html>
