@@ -1,29 +1,19 @@
 import logging
 import os
+from bisect import bisect_left
 from collections import defaultdict
 from logging.handlers import RotatingFileHandler
 from urllib.parse import urlparse
 
 import bleach
+import faiss
 from flask import Flask, jsonify, render_template, request
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from embedder import doc_id_to_index, faiss_index, model
-
-# TODO: Autocomplete Suggestions
-# from bisect import bisect_left
-# sorted_terms = sorted(inverted_index.keys())
-
-
-project_root = os.path.dirname(os.path.abspath(__file__))
-nltk_data_dir = os.path.join(project_root, "data", "nltk_data")
-if not os.path.exists(nltk_data_dir):
-    os.makedirs(nltk_data_dir)
-os.environ["NLTK_DATA"] = nltk_data_dir
-
 from config import START_URLS
+from embedder import doc_id_to_index, faiss_index, model
 from indexer import InvertedIndexer
 from query_processor import QueryProcessor
 from ranker import TFIDFRanker
@@ -33,8 +23,8 @@ app = Flask(__name__)
 # Configure cache
 cache = Cache(
     config={
-        "CACHE_TYPE": "SimpleCache",  # For development
-        "CACHE_DEFAULT_TIMEOUT": 300,  # 5 minutes
+        "CACHE_TYPE": "SimpleCache",
+        "CACHE_DEFAULT_TIMEOUT": 300,
     }
 )
 cache.init_app(app)
@@ -49,14 +39,12 @@ limiter = Limiter(
 
 # Initialize indexer globally
 indexer = InvertedIndexer()
-ranker = None  # Will be initialized after indexer loads documents
-
+ranker = None
+query_processor = QueryProcessor()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# File handler which logs even debug messages
 file_handler = RotatingFileHandler(
     "search_engine.log", maxBytes=1024 * 1024, backupCount=5
 )
@@ -66,21 +54,15 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
-# spelling correction and semantic expansion
-query_processor = QueryProcessor()
-
-# --- Data Loading and Ranker Initialization ---
 # This code will execute once when the Flask application starts
 print("Attempting to load search engine data...")
 if indexer.load_index():
-    # Only initialize ranker if documents were successfully loaded
     ranker = TFIDFRanker(indexer.documents, indexer.inverted_index)
     print("Search engine data loaded and ranker initialized.")
 else:
     print(
         "No search engine data found. Please run `python3 main.py` first to build the index."
     )
-# --- End Data Loading ---
 
 
 def sanitize_query(query):
@@ -103,27 +85,14 @@ def index():
 @app.route("/search")
 @cache.cached(query_string=True)
 @limiter.limit("10/minute")
-# @app.route("/search", methods=["GET"])
 def search():
     """Handles search queries and displays results with content type tabs."""
     raw_query = request.args.get("query", "")
     query = query_processor.process(sanitize_query(raw_query))
-    # Get the content type from the URL, defaulting to 'all'
     content_type = request.args.get("type", "all").strip()
     mode = request.args.get("mode", "keyword")
 
-    if mode == "semantic":
-        q_vec = model.encode([raw_query], convert_to_numpy=True)
-        faiss.normalize_L2(q_vec)
-        D, I = faiss_index.search(q_vec, k=50)
-        doc_ids = [doc_id_to_index[i] for i in I[0]]
-        # optional: re-rank doc_ids by TF-IDF hybrid score
-        results = [build_result_from_docid(did) for did in doc_ids]
-    else:
-        results = ranker.rank_documents(query)
-
     try:
-
         if not ranker:
             return render_template(
                 "results.html",
@@ -132,20 +101,27 @@ def search():
                 message="Search engine not initialized",
             )
 
-        ranked_docs = ranker.rank_documents(query)
-        results = []
+        if mode == "semantic":
+            # Semantic search logic (unchanged)
+            q_vec = model.encode([raw_query], convert_to_numpy=True)
+            faiss.normalize_L2(q_vec)
+            D, I = faiss_index.search(q_vec, k=50)
+            doc_ids = [doc_id_to_index[i] for i in I[0]]
+            results = [build_result_from_docid(did) for did in doc_ids]
+        else:
+            ranked_docs = ranker.rank(query)
+            results = []
 
-        for doc in ranked_docs:
-            result = {
-                "url": doc[2],
-                "title": doc[3] or doc[2],
-                "snippet": doc[4],
-                "score": f"{doc[1]:.2f}",
-                "images": doc[5] if len(doc) > 5 else [],
-            }
-            results.append(result)
+            for doc in ranked_docs:
+                result = {
+                    "url": doc[2],
+                    "title": doc[3] or doc[2],
+                    "snippet": doc[4],
+                    "score": f"{doc[1]:.2f}",
+                    "images": doc[5] if len(doc) > 5 else [],
+                }
+                results.append(result)
 
-        # Apply filters
         if content_type == "images":
             results = [r for r in results if r.get("images")]
         elif content_type == "others":
@@ -175,40 +151,24 @@ def autocomplete():
     query = request.args.get("query", "").lower().strip()
     suggestions = []
 
-    if not query:
-        return jsonify(suggestions)
-
-    if not ranker or not hasattr(ranker, "inverted_index"):
+    if not query or not ranker or not hasattr(ranker, "sorted_terms"):
         return jsonify(suggestions)
 
     try:
-        matching_terms = (
-            term for term in ranker.inverted_index if term.startswith(query)
-        )
-
-        suggestions = sorted(
-            matching_terms, key=lambda t: -len(ranker.inverted_index[t])
-        )[:5]
-
+        start_index = bisect_left(ranker.sorted_terms, query)
+        for i in range(start_index, len(ranker.sorted_terms)):
+            term = ranker.sorted_terms[i]
+            if term.startswith(query):
+                suggestions.append(term)
+                if len(suggestions) >= 5:
+                    break
+            else:
+                # Stop if we no longer have a prefix match
+                break
     except Exception as e:
         logger.error(f"Autocomplete error: {e}")
-        return jsonify(suggestions)
 
     return jsonify(suggestions)
-
-
-# TODO: Autocomplete Suggestions
-# def prefix_suggestions(prefix, n=5):
-#     i = bisect_left(sorted_terms, prefix)
-#     results = []
-#     while (
-#         i < len(sorted_terms)
-#         and sorted_terms[i].startswith(prefix)
-#         and len(results) < n
-#     ):
-#         results.append(sorted_terms[i])
-#         i += 1
-#     return results
 
 
 # HACK: for debug
