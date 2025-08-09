@@ -15,7 +15,6 @@ setup(
         "flask-caching>=2.3.0",
         "flask-limiter>=3.0.1",
         "bleach>=4.0.0",
-        "flask-limiter>=2.0.0",
         "symspellpy>=6.7.0",
         "nltk>=3.9.0",
         "scipy>=1.10.1",
