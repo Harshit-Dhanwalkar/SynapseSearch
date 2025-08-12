@@ -25,8 +25,7 @@
               "cyber-cyan": "#00f0ff",
               "cyber-light-purple": "#f4d5fd", // Used for main text, almost white
               "cyber-dark-purple": "#772289", // Used for borders, shadows, darker accents
-              "cyber-bg-dark": "#0d0d0d", // Very dark background
-              "cyber-card-bg": "#1a1a1a", // Slightly lighter dark for card backgrounds
+              "cyber-bg-dark": "#0d0d0d",
             },
             fontFamily: {
               "space-mono": ['"Space Mono"', "monospace"],
@@ -36,203 +35,150 @@
       };
     </script>
     <style>
-      /* --- Theme-specific styles --- */
       html[data-theme="dark"] body {
         background-color: #1a202c;
         color: #e2e8f0;
       }
-
       html[data-theme="light"] body {
         background-color: #ffffff;
         color: #2d3748;
       }
-
       html[data-theme="cyberpunk"] body {
         background-color: #0d0d0d;
-        color: #f4d5fd;
+        color: #4bff21;
+        font-family: "Space Mono", monospace;
       }
-
-      html[data-theme="cyberpunk"] .search-input {
-        background-color: #1a1a1a;
-        color: #f4d5fd;
-        border-color: #772289;
+      html[data-theme="dark"] .bg-white {
+        background-color: #2d3748;
       }
-
-      html[data-theme="cyberpunk"] .result-item {
-        background-color: #1a1a1a;
-        color: #f4d5fd;
-        border-color: #772289;
+      html[data-theme="dark"] .text-gray-600 {
+        color: #cbd5e0;
       }
-
-      html[data-theme="cyberpunk"] .result-item a {
-        color: #00f0ff; /* Cyber cyan for links */
+      html[data-theme="dark"] .bg-gray-100 {
+        background-color: #4a5568;
       }
-
-      body {
-        @apply transition-colors duration-500;
+      html[data-theme="dark"] .hover\:bg-gray-200:hover {
+        background-color: #718096;
       }
-
-      .search-input {
-        @apply transition-colors duration-500;
+      html[data-theme="cyberpunk"] .bg-white {
+        background-color: #1a202c;
       }
-
-      .result-item {
-        @apply transition-colors duration-500;
+      html[data-theme="cyberpunk"] .text-gray-600 {
+        color: #00f0ff;
       }
-
-      .tab-button.active {
-        border-bottom: 2px solid #1a73e8;
-        color: #1a73e8;
-        font-weight: 500;
+      html[data-theme="cyberpunk"] .hover\:bg-gray-200:hover {
+        background-color: #1a202c;
       }
-
-      .tab-button {
-        transition: all 0.2s ease-in-out;
-        padding: 0.5rem 1rem;
-        margin: 0 0.5rem;
-        cursor: pointer;
+      html[data-theme="cyberpunk"] .tab-active {
+        border-color: #4bff21;
+        color: #4bff21;
       }
-
-      .tab-button:hover {
-        color: #1a73e8;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .result-item {
-        animation: fadeIn 0.5s ease-out;
+      .tab-active {
+        border-bottom: 2px solid #3b82f6;
+        color: #3b82f6;
       }
     </style>
   </head>
-  <body class="font-sans">
-    <button
-      id="theme-toggle"
-      class="fixed top-4 right-4 p-2 rounded-full text-xl z-50 focus:outline-none transition-colors duration-300"
+  <body class="min-h-screen flex flex-col items-center">
+    <header
+      class="w-full flex items-center justify-between p-4 bg-gray-800 text-white shadow-lg"
     >
-      <i class="fas fa-sun text-yellow-500 hidden" data-theme-icon="light"></i>
-      <i class="fas fa-moon text-gray-400 hidden" data-theme-icon="dark"></i>
-      <i
-        class="fas fa-bolt text-blue-400 hidden"
-        data-theme-icon="cyberpunk"
-      ></i>
-    </button>
-    <header class="shadow-sm py-4">
-      <div
-        class="flex items-center justify-between w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl md:max-w-6xl"
-      >
-        <a href="/" class="text-2xl font-bold text-blue-600">SynapseSearch</a>
-        <div class="flex-grow max-w-4xl mx-auto px-4">
-          <form action="/search" method="get" class="flex items-center">
-            <div class="relative flex-grow">
-              <input
-                type="text"
-                name="query"
-                value="{{ query }}"
-                class="search-input w-full py-2 pl-10 pr-4 text-base border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <svg
-                class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                ></path>
-              </svg>
-            </div>
-            <input
-              type="hidden"
-              name="type"
-              value="{{ content_type }}"
-              id="content-type-input"
-            />
-            <button type="submit" class="hidden">Search</button>
-          </form>
-        </div>
-        <div></div>
+      <a href="/" class="flex-shrink-0 text-2xl font-bold">SynapseSearch</a>
+      <div class="flex-grow max-w-xl mx-4">
+        <form action="/search" method="get" class="relative">
+          <input
+            type="text"
+            name="query"
+            value="{{ query }}"
+            class="w-full px-4 py-2 border rounded-full text-black"
+            placeholder="Search again..."
+          />
+          <input
+            type="hidden"
+            name="mode"
+            value="{{ request.args.get('mode', 'keyword') }}"
+          />
+          <button
+            type="submit"
+            class="absolute right-0 top-0 mt-2 mr-4 text-gray-500"
+          >
+            <i class="fas fa-search"></i>
+          </button>
+        </form>
       </div>
-      <div class="border-b border-gray-200 mt-4">
-        <div
-          class="flex justify-start w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl md:max-w-6xl"
-        >
-          <button
-            onclick="changeContentType('all')"
-            class="tab-button {% if content_type == 'all' %}active{% endif %}"
-          >
-            All
-          </button>
-          <button
-            onclick="changeContentType('images')"
-            class="tab-button {% if content_type == 'images' %}active{% endif %}"
-          >
-            Images
-          </button>
-          <button
-            onclick="changeContentType('others')"
-            class="tab-button {% if content_type == 'others' %}active{% endif %}"
-          >
-            Others
-          </button>
-        </div>
-      </div>
+      <button id="theme-toggle" class="focus:outline-none">
+        <i class="fas fa-moon text-xl" data-theme-icon="dark"></i>
+        <i class="fas fa-sun text-xl hidden" data-theme-icon="light"></i>
+        <i class="fas fa-robot text-xl hidden" data-theme-icon="cyberpunk"></i>
+      </button>
     </header>
 
-    <main
-      class="w-full mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl md:max-w-6xl mt-8"
-    >
-      {% if message %}
-      <p class="text-center text-gray-600 text-lg">{{ message }}</p>
-      {% else %}
-      <p class="text-gray-600 mb-6">About {{ results | length }} results</p>
-      <div class="results-container">
+    <main class="w-full max-w-4xl p-6 flex-grow">
+      <div class="flex border-b border-gray-700 mb-6">
+        <button
+          onclick="changeContentType('all')"
+          class="py-2 px-4 {% if content_type == 'all' %}tab-active{% else %}text-gray-400{% endif %}"
+        >
+          All
+        </button>
+        <button
+          onclick="changeContentType('images')"
+          class="py-2 px-4 {% if content_type == 'images' %}tab-active{% else %}text-gray-400{% endif %}"
+        >
+          Images
+        </button>
+      </div>
+
+      <div class="text-xl font-semibold mb-4">{{ message }}</div>
+
+      {% if content_type == 'all' %}
+      <div class="space-y-6">
         {% for result in results %}
-        <div class="p-6 rounded-lg shadow-md mb-6 result-item">
+        <div
+          class="bg-gray-800 p-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
+        >
           <a
             href="{{ result.url }}"
-            class="text-blue-700 hover:underline text-xl font-medium"
+            class="block text-xl font-semibold text-blue-400 hover:underline"
+            >{{ result.title }}</a
           >
-            {{ result.title }}
-          </a>
-          <p class="text-sm text-green-700 truncate">
-            {{ result.url | url_domain }}
+          <div class="text-sm text-green-400">{{ result.url|url_domain }}</div>
+          <p class="text-gray-300 mt-2">
+            {{ result.snippet }}...
+            <span class="text-gray-500">Score: {{ result.score }}</span>
           </p>
-          <p class="mt-2 text-base leading-relaxed">
-            {{ result.snippet | safe }}
-          </p>
-
           {% if result.images %}
-          <div
-            class="flex overflow-x-auto space-x-4 p-2 mt-4 bg-gray-50 rounded-lg shadow-inner"
-          >
-            {% for image in result.images %}
-            <div class="flex-shrink-0 w-32 h-32 md:w-48 md:h-48">
-              <a href="{{ image.src }}" target="_blank">
-                <img
-                  src="{{ image.src }}"
-                  alt="{{ image.alt }}"
-                  class="w-full h-full object-cover rounded-lg border-2 border-gray-200"
-                />
-              </a>
-            </div>
+          <div class="flex flex-wrap mt-4 space-x-2">
+            {% for image in result.images[:3] %}
+            <img
+              src="{{ image.src }}"
+              alt="{{ image.alt }}"
+              class="h-16 w-16 object-cover rounded"
+            />
             {% endfor %}
           </div>
           {% endif %}
         </div>
         {% endfor %}
+      </div>
+      {% elif content_type == 'images' %}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {% for result in results %} {% for image in result.images %}
+        <div class="relative group">
+          <a href="{{ result.url }}">
+            <img
+              src="{{ image.src }}"
+              alt="{{ image.alt }}"
+              class="w-full h-48 object-cover rounded-lg group-hover:opacity-75"
+            />
+            <div
+              class="absolute bottom-0 left-0 right-0 p-2 bg-black bg-opacity-50 text-white text-xs rounded-b-lg hidden group-hover:block"
+            >
+              {{ image.alt }}
+            </div>
+          </a>
+        </div>
+        {% endfor %} {% endfor %}
       </div>
       {% endif %}
     </main>
