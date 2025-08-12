@@ -2,3 +2,7 @@
 /data
 /__pycache__
 /search_engine.log
+/src/__pycache__
+/mod/__pycache__
+# */__pycache__/
+# **/__pycache__/
