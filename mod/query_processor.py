@@ -1,6 +1,12 @@
 import os
 import re
 
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+nltk_data_dir = os.path.join(project_root, "data", "nltk_data")
+os.environ["NLTK_DATA"] = nltk_data_dir
+if not os.path.exists(nltk_data_dir):
+    os.makedirs(nltk_data_dir)
+
 import nltk
 from nltk.corpus import wordnet
 from nltk.stem import PorterStemmer

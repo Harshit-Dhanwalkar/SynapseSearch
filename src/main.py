@@ -1,23 +1,26 @@
 import asyncio
 import logging
 import os
+import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Pool
 
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
+
+# project_root = os.path.dirname(os.path.abspath(__file__))
 nltk_data_dir = os.path.join(project_root, "data", "nltk_data")
 if not os.path.exists(nltk_data_dir):
     os.makedirs(nltk_data_dir)
 os.environ["NLTK_DATA"] = nltk_data_dir
 
-from parser import HTMLParser, ParsedDocument
-
-from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
-from crawler import get_robots_parser, web_crawler
-from embedder import build_faiss_index, save_faiss_index
-from indexer import InvertedIndexer
-from ranker import TFIDFRanker
+from mod.crawler import get_robots_parser, web_crawler
+from mod.embedder import build_faiss_index, save_faiss_index
+from mod.indexer import InvertedIndexer
+from mod.parser import HTMLParser, ParsedDocument
+from mod.ranker import TFIDFRanker
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -52,10 +55,7 @@ def run_data_pipeline(start_urls, max_depth, max_pages):
         print("\n" + "-" * 25 + " Starting Web Crawling " + "-" * 25)
         start_time = time.time()
 
-        # Calculate max pages per URL to distribute the load
         pages_per_url = max_pages // len(start_urls)
-
-        # Run the async crawlers using the asyncio event loop
         all_crawled_data = asyncio.run(
             run_crawlers_async(start_urls, max_depth, pages_per_url)
         )
@@ -85,12 +85,13 @@ def run_data_pipeline(start_urls, max_depth, max_pages):
         print("-" * 25 + " Finished Indexing " + "-" * 25 + "\n")
 
         print("-" * 25 + " Starting FAISS Indexing " + "-" * 25)
+
         start_time = time.time()
-        documents_list = [
-            {"url": url, "title": doc["title"], "text": doc["text"]}
-            for url, doc in indexer.documents.items()
-        ]
-        build_faiss_index(documents_list)
+        # documents_list = [
+        #     {"url": url, "title": doc["title"], "text": doc["text"]}
+        #     for url, doc in indexer.documents.items()
+        # ]
+        build_faiss_index(indexer.documents)
         save_faiss_index()
         end_time = time.time()
         print(f"FAISS Indexing finished in {end_time - start_time:.2f} seconds.")

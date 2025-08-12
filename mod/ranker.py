@@ -4,14 +4,17 @@ import re
 from collections import defaultdict
 from functools import lru_cache
 
-# Set the NLTK_DATA environment variable *before* importing NLTK
-local_nltk_data_path = os.path.join(os.path.dirname(__file__), "data", "nltk_data")
-os.environ['NLTK_DATA'] = local_nltk_data_path
+import joblib
+
+local_nltk_data_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "nltk_data"
+)
+os.environ["NLTK_DATA"] = local_nltk_data_path
 os.makedirs(local_nltk_data_path, exist_ok=True)
 
-import joblib
 import nltk
-from nltk.corpus import wordnet
+
+# from nltk.corpus import wordnet
 from nltk.stem import PorterStemmer
 from scipy.sparse import load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -20,8 +23,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 print(f"Intended NLTK download directory: {local_nltk_data_path}")
 print(f"NLTK data search paths: {nltk.data.path}")
 
-nltk.download("wordnet", download_dir=local_nltk_data_path, quiet=True)
-nltk.download("omw-1.4", download_dir=local_nltk_data_path, quiet=True)
+nltk.download("wordnet", quiet=True)
+nltk.download("omw-1.4", quiet=True)
 
 
 def clean_text(text):

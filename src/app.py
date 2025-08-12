@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from bisect import bisect_left
 from collections import defaultdict
 from logging.handlers import RotatingFileHandler
@@ -12,13 +13,18 @@ from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from config import START_URLS
-from embedder import doc_id_to_index, faiss_index, model
-from indexer import InvertedIndexer
-from query_processor import QueryProcessor
-from ranker import TFIDFRanker
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
+from mod.embedder import doc_id_to_index, faiss_index, model
+from mod.indexer import InvertedIndexer
+from mod.query_processor import QueryProcessor
+from mod.ranker import TFIDFRanker
 
-app = Flask(__name__)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+app = Flask(__name__, template_folder=os.path.join(project_root, "templates"))
 
 # Configure cache
 cache = Cache(
