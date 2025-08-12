@@ -5,11 +5,11 @@ set -e
 
 function setup_project() {
     echo "Creating Python virtual environment..."
-    if [ -d ".venv" ]; then
-        echo "Virtual environment '.venv' already exists. Skipping creation."
-    else
-        echo "Creating Python virtual environment..."
+    if [ ! -d ".venv" ]; then
         python3.11 -m venv .venv
+        echo "Virtual environment '.venv' created."
+    else
+        echo "Virtual environment '.venv' already exists. Skipping creation."
     fi
 
     echo "Installing dependencies from requirements.txt..."
@@ -34,14 +34,17 @@ function clean_project() {
         echo "Removing data directory (data)..."
         rm -rf data
     fi
+
+    find . -type d -name "__pycache__" -exec rm -rf {} +
+    echo "Removed all __pycache__ directories."
+
     echo "Clean operation complete."
 }
-
 
 if [ -z "$1" ]; then
     echo "Usage: ./setup.sh [setup|clean]"
     echo "  setup: Creates a virtual environment and installs dependencies."
-    echo "  clean: Removes the virtual environment, log file, and data directory."
+    echo "  clean: Removes the virtual environment, log file, __pycache__ and data directory."
     exit 1
 elif [ "$1" == "setup" ]; then
     setup_project
@@ -51,6 +54,6 @@ else
     echo "Error: Unknown argument '$1'"
     echo "Usage: ./setup.sh [setup|clean]"
     echo "  setup: Creates a virtual environment and installs dependencies."
-    echo "  clean: Removes the virtual environment, log file, and data directory."
+    echo "  clean: Removes the virtual environment, log file, __pycache__ and data directory."
     exit 1
 fi
