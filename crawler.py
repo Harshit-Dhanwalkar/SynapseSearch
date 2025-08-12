@@ -2,13 +2,13 @@ import asyncio
 import io
 import re
 import time
-import urllib.robotparser
+from collections import deque
 from typing import Any, Dict, List, Tuple
 from urllib.parse import urljoin, urlparse
+from urllib.robotparser import RobotFileParser
 
 import aiohttp
 import pytesseract
-import requests
 from bs4 import BeautifulSoup
 from PIL import Image, ImageFile
 
@@ -16,7 +16,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 IMAGE_DOWNLOAD_TIMEOUT = 10
 IMAGE_OCR_MAX_PIXELS = 1600 * 1200
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
-ENABLE_IMAGE_OCR = True  # False to skip OCR
+ENABLE_IMAGE_OCR = True
+ROBOTS_PARSERS = {}
 
 
 def clean_text(text: str) -> str:
@@ -32,46 +33,56 @@ def clean_text(text: str) -> str:
     return text
 
 
-def get_robots_parser(url):
-    """
-    Fetches and parses robots.txt for a given URL.
-    """
-    robots_url = urljoin(url, "/robots.txt")
+async def get_robots_parser(session, domain):
+    """Asynchronously fetches and returns a RobotFileParser for a domain."""
+    if domain in ROBOTS_PARSERS:
+        return ROBOTS_PARSERS[domain]
+
+    robots_url = urljoin(f"https://{domain}", "/robots.txt")
+    parser = RobotFileParser()
+    parser.set_url(robots_url)
     try:
-        response = requests.get(robots_url, timeout=5)
-        response.raise_for_status()
-        rp = urllib.robotparser.RobotFileParser()
-        rp.parse(response.text.splitlines())
-        return rp
+        async with session.get(robots_url, timeout=5) as response:
+            if response.status == 200:
+                robots_content = await response.text()
+                parser.parse(robots_content.splitlines())
     except Exception as e:
-        print(f"Error fetching robots.txt for {url}: {e}")
-        return None
+        print(f"Could not fetch or parse robots.txt for {domain}: {e}")
+
+    ROBOTS_PARSERS[domain] = parser
+    return parser
 
 
-def fetch_image_bytes(url: str) -> bytes:
+def can_fetch(parser, url):
+    """Checks if a URL can be fetched according to robots.txt rules."""
+    if parser:
+        return parser.can_fetch("*", url)
+    return True
+
+
+async def fetch_image_bytes_async(session, url: str) -> bytes:
     """
-    Fetches image bytes synchronously using `requests`.
+    Asynchronously fetches image bytes using `aiohttp`.
     """
     try:
-        response = requests.get(url, timeout=IMAGE_DOWNLOAD_TIMEOUT)
-        response.raise_for_status()
-        if (
-            "Content-Length" in response.headers
-            and int(response.headers["Content-Length"]) > MAX_IMAGE_BYTES
-        ):
-            return None
-        data = response.content
-        if len(data) > MAX_IMAGE_BYTES:
-            return None
-        return data
-    except requests.exceptions.RequestException as e:
+        async with session.get(url, timeout=IMAGE_DOWNLOAD_TIMEOUT) as response:
+            response.raise_for_status()
+            content_length = response.headers.get("Content-Length")
+            if content_length and int(content_length) > MAX_IMAGE_BYTES:
+                return None
+            data = await response.read()
+            if len(data) > MAX_IMAGE_BYTES:
+                return None
+            return data
+    except aiohttp.ClientError as e:
         print(f"Error fetching image {url}: {e}")
         return None
 
 
 def ocr_from_pil_image(pil_img: Image.Image) -> str:
     """
-    Performs OCR on a PIL Image object.
+    Performs OCR on a PIL Image object (synchronous).
+    This function will be run in a separate thread to avoid blocking.
     """
     try:
         img = pil_img.convert("L")
@@ -85,25 +96,26 @@ def ocr_from_pil_image(pil_img: Image.Image) -> str:
         return ""
 
 
-def fetch_image_text_sync(img_url: str) -> str:
+async def fetch_image_text_async(session, img_url: str) -> str:
     """
-    Synchronously fetches an image and extracts text using OCR.
+    Asynchronously fetches an image and extracts text using OCR.
     """
     try:
-        data = fetch_image_bytes(img_url)
+        data = await fetch_image_bytes_async(session, img_url)
         if not data:
             return ""
+
         pil_img = Image.open(io.BytesIO(data))
-        return ocr_from_pil_image(pil_img)
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, ocr_from_pil_image, pil_img)
+
     except Exception as e:
         print(f"Error processing image {img_url}: {e}")
         return ""
 
 
 def is_content_image_extension(url: str) -> bool:
-    """
-    Checks if a URL has a common image file extension.
-    """
+    """Checks if a URL has a common image file extension."""
     url = url.lower()
     return any(
         url.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"]
@@ -111,9 +123,7 @@ def is_content_image_extension(url: str) -> bool:
 
 
 def sanitize_img_src(src: str, base_url: str) -> str:
-    """
-    Joins a relative image source URL with the base URL.
-    """
+    """Joins a relative image source URL with the base URL."""
     try:
         return urljoin(base_url, src)
     except Exception:
@@ -140,7 +150,6 @@ def extract_page_text_and_images(
         img_alt = clean_text(img.get("alt", "") or "")
         url_path = urlparse(img_src).path.lower()
 
-        # filter decorative images
         if img_src.startswith("data:"):
             continue
         if any(
@@ -170,79 +179,110 @@ def find_internal_links(
     return links
 
 
-def process_images_for_page(images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def process_images_for_page_async(
+    session, images: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """
-    Synchronously processes images for a page to extract OCR text.
+    Asynchronously processes images for a page to extract OCR text.
     """
-    if not images:
+    if not ENABLE_IMAGE_OCR or not images:
         return images
+
+    tasks = []
     for img in images:
-        img_url = img["src"]
-        img["ocr_text"] = clean_text(fetch_image_text_sync(img_url))
+        tasks.append(fetch_image_text_async(session, img["src"]))
+
+    ocr_texts = await asyncio.gather(*tasks)
+
+    for img, text in zip(images, ocr_texts):
+        img["ocr_text"] = clean_text(text)
+
     return images
 
 
-def web_crawler(
-    start_url: str,
-    robots_parser: urllib.robotparser.RobotFileParser,
-    max_depth: int,
-    max_pages: int,
-) -> Dict[str, Dict[str, Any]]:
+async def web_crawler(start_url: str, max_depth: int, max_pages: int):
     """
-    Crawls a website synchronously starting from a given URL.
-    This function is designed to be run in a multiprocessing pool.
+    An asynchronous web crawler that respects robots.txt.
     """
-    queue = [(start_url, 0)]
     visited_urls = set()
+    pages_crawled = 0
+    start_time = time.time()
     crawled_data = {}
-    seed_netloc = urlparse(start_url).netloc
+    queue = deque([(start_url, 0)])
 
-    print(f"Starting crawl from: {start_url}")
+    parsed_start_url = urlparse(start_url)
+    seed_netloc = parsed_start_url.netloc
 
-    while queue and len(crawled_data) < max_pages:
-        current_url, depth = queue.pop(0)
+    async with aiohttp.ClientSession() as session:
+        while queue and len(crawled_data) < max_pages:
+            current_url, depth = queue.popleft()
 
-        if current_url in visited_urls or depth > max_depth:
-            continue
-        if robots_parser and not robots_parser.can_fetch("*", current_url):
-            print(f"Skipping {current_url} (robots.txt)")
+            if current_url in visited_urls or depth > max_depth:
+                continue
+
+            parsed_url = urlparse(current_url)
+            domain = parsed_url.netloc
+
+            robots_parser = await get_robots_parser(session, domain)
+            if not can_fetch(robots_parser, current_url):
+                print(f"Skipping {current_url} (robots.txt)")
+                visited_urls.add(current_url)
+                continue
+
             visited_urls.add(current_url)
-            continue
+            pages_crawled += 1
+            print(f"Crawling: {current_url} at depth {depth}")
 
-        print(f"[{len(crawled_data)+1}/{max_pages}] Depth {depth}: {current_url}")
-        visited_urls.add(current_url)
+            try:
+                async with session.get(current_url, timeout=10) as response:
+                    if response.status == 200:
+                        html_content = await response.text()
+                        soup = BeautifulSoup(html_content, "html.parser")
+                        page_title, page_body_text, images = (
+                            extract_page_text_and_images(soup, current_url)
+                        )
 
-        try:
-            r = requests.get(current_url, timeout=5)
-            r.raise_for_status()
-            soup = BeautifulSoup(r.text, "html.parser")
+                        # Asynchronously process images
+                        processed_images = await process_images_for_page_async(
+                            session, images
+                        )
 
-            title, body_text, images = extract_page_text_and_images(soup, current_url)
+                        crawled_data[current_url] = {
+                            "title": page_title,
+                            "text": page_body_text,
+                            "images": processed_images,
+                        }
 
-            if ENABLE_IMAGE_OCR and images:
-                images = process_images_for_page(images)
+                        print(f"Successfully crawled and parsed {current_url}")
 
-            crawled_data[current_url] = {
-                "title": title,
-                "text": body_text,
-                "images": images,
-            }
+                        # Find and add new links to the queue
+                        links = find_internal_links(soup, current_url, seed_netloc)
+                        for link in links:
+                            if (
+                                link not in visited_urls
+                                and urlparse(link).netloc == seed_netloc
+                            ):
+                                queue.append((link, depth + 1))
+                    else:
+                        print(
+                            f"Failed to fetch {current_url} with status: {response.status}"
+                        )
+            except Exception as e:
+                print(f"Error fetching {current_url}: {e}")
 
-            for link in find_internal_links(soup, current_url, seed_netloc):
-                if link not in visited_urls and link not in [u for u, _ in queue]:
-                    queue.append((link, depth + 1))
+    end_time = time.time()
+    print(f"\nCrawl finished in {end_time - start_time:.2f} seconds.")
+    print(f"Crawled {len(crawled_data)} pages.")
 
-            time.sleep(0.1)
-        except Exception as e:
-            print(f"Error fetching {current_url}: {e}")
-
-    print(f"Finished crawling {len(crawled_data)} pages.")
     return crawled_data
 
 
 if __name__ == "__main__":
-    start_url = "http://quotes.toscrape.com/"
-    robots_parser = get_robots_parser(start_url)
-    data = web_crawler(start_url, robots_parser, max_depth=1, max_pages=5)
-    for url, d in data.items():
-        print(url, d["title"], len(d["images"]), "images")
+
+    async def run_example():
+        start_url = "http://quotes.toscrape.com/"
+        data = await web_crawler(start_url, max_depth=1, max_pages=5)
+        for url, d in data.items():
+            print(url, d["title"], len(d["images"]), "images")
+
+    asyncio.run(run_example())
