@@ -33,6 +33,21 @@ To set up the project, follow these steps:
     sudo apt update && sudo apt install -y tesseract-ocr
     ```
 
+### Cleaning the Project
+
+To clean the project, run the following command. This will remove all generated files and directories, resetting the project to a fresh state.
+
+```bash
+./setup.sh clean
+```
+
+The clean command removes:
+
+- The Python virtual environment (`.venv`).
+- The downloaded NLTK data and indexed files (`data/`).
+- The log file (`search_engine.log`).
+- All Python cache directories (`__pycache__`).
+
 ---
 
 ## Project Status
@@ -54,5 +69,7 @@ To set up the project, follow these steps:
 - **Image Indexing:** Enhance the image indexing process with more advanced computer vision techniques for better content analysis.
 
 ---
+
+# License
 
 [MIT License](https://github.com/Harshit-Dhanwalkar/SynapseSearch/blob/main/LICENSE)

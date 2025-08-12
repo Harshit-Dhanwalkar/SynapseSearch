@@ -12,10 +12,10 @@ function setup_project() {
         echo "Virtual environment '.venv' already exists. Skipping creation."
     fi
 
-    echo "Installing dependencies from requirements.txt..."
+    echo -e "\nInstalling dependencies from requirements.txt..."
     .venv/bin/pip install -r requirements.txt
 
-    echo "Setup complete!"
+    echo -e "\nSetup complete!\n"
     echo "To activate the virtual environment, please run the following command:"
     echo "  source .venv/bin/activate"
 }
@@ -34,11 +34,18 @@ function clean_project() {
         echo "Removing data directory (data)..."
         rm -rf data
     fi
+    if [ -d "models" ]; then
+        echo "Removing models directory (models)..."
+        rm -rf models
+    fi
 
     find . -type d -name "__pycache__" -exec rm -rf {} +
     echo "Removed all __pycache__ directories."
 
-    echo "Clean operation complete."
+    find . -type d -name "search_log.txt" -exec rm -rf {} +
+    echo "Removed search log."
+
+    echo -e "\nClean operation complete."
 }
 
 if [ -z "$1" ]; then

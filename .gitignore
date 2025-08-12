@@ -1,8 +1,9 @@
 /.venv
-/data
 /__pycache__
-/search_engine.log
 /src/__pycache__
 /mod/__pycache__
+/data
+/models
+/search_engine.log
 # */__pycache__/
 # **/__pycache__/
