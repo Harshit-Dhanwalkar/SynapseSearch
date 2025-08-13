@@ -48,12 +48,13 @@ def tokenize(text):
 
 
 class TFIDFRanker:
-    def __init__(self, documents, rebuild=False):
+    def __init__(self, documents, stopwords_path=None, rebuild=False):
         """
         Initializes the TFIDFRanker, building or loading the TF-IDF matrix.
 
         Args:
             documents (dict): {doc_id: {"url": url, "title": title, "text": text, "images": [...]}}
+            stopwords_path (str, optional): Path to custom stopwords file. Defaults to None.
             rebuild (bool): If True, forces a rebuild of the TF-IDF matrix.
         """
         print("TF-IDF ranker initializing...")
@@ -62,7 +63,8 @@ class TFIDFRanker:
         self.vectorizer = None
         self.tfidf_matrix = None
         self.stemmer = PorterStemmer()
-        self.stopwords_set = set(stopwords.words("english"))
+        self.stopwords_set = self._load_stopwords(stopwords_path)
+        # self.stopwords_set = set(stopwords.words("english"))
 
         # Data for autocomplete functionality
         self.original_terms_map = {}
@@ -210,6 +212,41 @@ class TFIDFRanker:
             + (" ..." if end_index < len(words) else "")
         )
         return final_snippet
+
+    def _load_stopwords(self, stopwords_path=None):
+        """Load stopwords from file or use default NLTK stopwords."""
+        stopwords_set = set(stopwords.words("english"))
+
+        if stopwords_path and os.path.exists(stopwords_path):
+            try:
+                with open(stopwords_path, "r") as f:
+                    custom_stopwords = set(f.read().split())
+                stopwords_set.update(custom_stopwords)
+                print(
+                    f"Loaded {len(custom_stopwords)} additional stopwords from {stopwords_path}"
+                )
+            except Exception as e:
+                print(f"Error loading custom stopwords: {e}")
+
+        return stopwords_set
+
+    def build_tfidf_matrix(self):
+        """
+        Builds the TF-IDF sparse matrix and persists it to disk.
+        """
+        print("Building TF-IDF matrix...")
+        corpus = [
+            f"{doc.get('title', '')} {doc.get('text', '')}"
+            for doc in self.documents.values()
+        ]
+
+        print(f"Processing a corpus of {len(corpus)} documents...")
+        self.vectorizer = TfidfVectorizer(
+            tokenizer=self.custom_tokenizer,
+            stop_words=list(self.stopwords_set),  # Use our stopwords set
+        )
+        self.tfidf_matrix = self.vectorizer.fit_transform(corpus)
+        print("TF-IDF matrix built and saved.")
 
     def get_autocomplete_suggestions(self, query):
         if not query or len(query) < 2:

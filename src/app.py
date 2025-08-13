@@ -1,4 +1,4 @@
-# appy.py
+# app.py
 
 import logging
 import os
@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 import bleach
 import faiss
+from faiss.gpu_wrappers import logger
 from flask import Flask, jsonify, render_template, request
 from flask_caching import Cache
 from flask_limiter import Limiter
@@ -17,7 +18,15 @@ from flask_limiter.util import get_remote_address
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
+sys.path.append(os.path.join(project_root, "src"))
+
+try:
+    from config import MAX_CRAWL_DEPTH, MAX_CRAWLED_PAGES, START_URLS
+except ImportError:
+    MAX_CRAWL_DEPTH = 1
+    MAX_CRAWLED_PAGES = 5
+    START_URLS = ["http://quotes.toscrape.com/"]
+
 from mod.embedder import doc_id_to_index, faiss_index, model
 from mod.indexer import InvertedIndexer
 from mod.query_processor import QueryProcessor
@@ -30,17 +39,14 @@ faiss_index_path = os.path.join(project_root, "data", "faiss_index.bin")
 doc_id_map_path = os.path.join(project_root, "data", "doc_id_map.json")
 models_dir = os.path.join(project_root, "models")
 stopwords_path = os.path.join(project_root, "data", "stopwords.txt")
-if not os.path.exists(models_dir):
-    os.makedirs(models_dir)
 
-# --- Logging Setup ---
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler = RotatingFileHandler(
-    os.path.join(project_root, "search_engine.log"), maxBytes=10000, backupCount=1
-)
-handler.setFormatter(formatter)
-logging.basicConfig(level=logging.INFO, handlers=[handler])
-logger = logging.getLogger(__name__)
+if not os.path.exists(stopwords_path):
+    print(
+        "Warning: Stopwords file 'stopwords.txt' not found at expected path. Using default list."
+    )
+    with open(stopwords_path, "w") as f:
+        f.write("a an the is in for from to of on with and or")
+
 
 # --- Flask App Initialization ---
 app = Flask(__name__, template_folder=os.path.join(project_root, "templates"))
@@ -54,13 +60,33 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
 )
 
+# --- Logging Setup ---
+# formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+# handler = RotatingFileHandler(
+#     os.path.join(project_root, "search_engine.log"), maxBytes=10000, backupCount=1
+# )
+# logging.basicConfig(level=logging.INFO, handlers=[handler])
+# logger = logging.getLogger(__name__)
+# log_handler = RotatingFileHandler(
+#     os.path.join(project_root, "search_engine.log"), maxBytes=10000, backupCount=1
+# )
+# log_handler.setFormatter(formatter)
+# log_handler.setLevel(logging.INFO)
+# app.logger.addHandler(log_handler)
+# app.logger.setLevel(logging.INFO)
+# logger = app.logger
+
 # --- Global Variables for Data ---
-# indexer = InvertedIndexer()
-# ranker = None
-# query_processor = QueryProcessor()
 indexer = None
 ranker = None
 query_processor = None
+
+
+def sanitize_query(query):
+    """
+    Sanitize user input to prevent XSS attacks.
+    """
+    return bleach.clean(query, tags=[], attributes={}, strip=True)
 
 
 def build_result_from_docid(doc_id):
@@ -87,7 +113,7 @@ def load_search_engine_data():
     """
     Load search engine components from disk.
     """
-    global indexer, ranker, query_processor
+    global indexer, ranker, query_processor, logger
     try:
         logger.info("Attempting to load search engine data...")
         # Initialize and load indexer
@@ -118,13 +144,6 @@ def load_search_engine_data():
         return False
 
 
-def sanitize_query(query):
-    """
-    Sanitize user input to prevent XSS attacks.
-    """
-    return bleach.clean(query.strip(), tags=[], strip=True)
-
-
 # --- Routes ---
 @app.template_filter("url_domain")
 def url_domain_filter(url):
@@ -152,13 +171,45 @@ def index():
         )
 
 
+@app.before_request
+def initialize_components():
+    global indexer, ranker, query_processor, logger
+    if not (indexer and ranker and query_processor):
+        try:
+            indexer = InvertedIndexer()
+            if not indexer.load_index():
+                logger.warning("No index found. Please run main.py to create one.")
+
+            documents = indexer.documents
+            ranker = TFIDFRanker(documents, stopwords_path=stopwords_path)
+            query_processor = QueryProcessor()
+
+            from mod.embedder import load_faiss_index
+
+            load_faiss_index()
+
+            if ranker:
+                logger.info("Search components initialized successfully.")
+            else:
+                logger.error("Failed to initialize ranker.")
+        except Exception as e:
+            logger.error(f"Error initializing search components: {e}")
+
+
 @app.route("/search")
-@cache.cached(query_string=True)
+@cache.cached(timeout=300)
+@limiter.limit("50 per minute")
 def search():
     """
-    Handles search queries and displays results with content type tabs.
+    Handles search queries and returns results as JSON.
     """
+    global ranker, query_processor
     raw_query = request.args.get("query", "")
+    # content_type = request.args.get("content_type", "all")
+    content_type = request.args.get("type", "all").strip()
+    query = sanitize_query(raw_query)
+    # query = query_processor.process(sanitize_query(raw_query))
+    mode = request.args.get("mode", "keyword")
 
     if not ranker or not query_processor:
         return render_template(
@@ -167,10 +218,6 @@ def search():
             results=[],
             message="Search engine not initialized",
         )
-
-    query = query_processor.process(sanitize_query(raw_query))
-    content_type = request.args.get("type", "all").strip()
-    mode = request.args.get("mode", "keyword")
 
     try:
         if mode == "semantic":
@@ -229,11 +276,17 @@ def autocomplete():
 
     try:
         suggestions = ranker.get_autocomplete_suggestions(query)
-        # suggestions = [ranker.original_terms_map.get(s, s) for s in stemmed_suggestions]
         return jsonify(suggestions)
     except Exception as e:
         logger.error(f"Autocomplete error: {e}")
         return jsonify([])
+
+
+# Catch-all route to serve the SPA for all other routes
+# @app.route("/", defaults={"path": ""})
+# @app.route("/<path:path>")
+# def catch_all(path):
+#     return render_template("index.html")
 
 
 # HACK: for debug
@@ -244,5 +297,5 @@ def ping():
 
 if __name__ == "__main__":
     os.makedirs(os.path.join(project_root, "data"), exist_ok=True)
-    load_search_engine_data()
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, host="0.0.0.0", port=5000)
+    # app.run(debug=True, host="0.0.0.0", port=5000, use_reloader=False) # for single process

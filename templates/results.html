@@ -4,74 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Results for "{{ query }}" - SynapseSearch</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
       rel="stylesheet"
     />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              "cyber-yellow": "#f8e602",
-              "cyber-green": "#4bff21",
-              "cyber-cyan": "#00f0ff",
-              "cyber-light-purple": "#f4d5fd", // Used for main text, almost white
-              "cyber-dark-purple": "#772289", // Used for borders, shadows, darker accents
-              "cyber-bg-dark": "#0d0d0d",
-            },
-            fontFamily: {
-              "space-mono": ['"Space Mono"', "monospace"],
-            },
-          },
-        },
-      };
-    </script>
     <style>
+      /* --- Theme-specific styles --- */
       html[data-theme="dark"] body {
         background-color: #1a202c;
         color: #e2e8f0;
       }
+
       html[data-theme="light"] body {
         background-color: #ffffff;
         color: #2d3748;
       }
+
       html[data-theme="cyberpunk"] body {
         background-color: #0d0d0d;
         color: #4bff21;
         font-family: "Space Mono", monospace;
       }
+
       html[data-theme="dark"] .bg-white {
         background-color: #2d3748;
       }
+
       html[data-theme="dark"] .text-gray-600 {
         color: #cbd5e0;
       }
+
       html[data-theme="dark"] .bg-gray-100 {
         background-color: #4a5568;
       }
+
       html[data-theme="dark"] .hover\:bg-gray-200:hover {
         background-color: #718096;
       }
+
       html[data-theme="cyberpunk"] .bg-white {
         background-color: #1a202c;
       }
+
       html[data-theme="cyberpunk"] .text-gray-600 {
         color: #00f0ff;
       }
       html[data-theme="cyberpunk"] .hover\:bg-gray-200:hover {
         background-color: #1a202c;
       }
-      html[data-theme="cyberpunk"] .tab-active {
-        border-color: #4bff21;
-        color: #4bff21;
+
+      html[data-theme="cyberpunk"] input {
+        border-color: #772289;
       }
       .tab-active {
         border-bottom: 2px solid #3b82f6;
@@ -143,12 +130,14 @@
             >{{ result.title }}</a
           >
           <div class="text-sm text-green-400">{{ result.url|url_domain }}</div>
+
           <p class="text-gray-300 mt-2">
             {{ result.snippet }}...
             <span class="text-gray-500">Score: {{ result.score }}</span>
           </p>
+
           {% if result.images %}
-          <div class="flex flex-wrap mt-4 space-x-2">
+          <div class="flex mt-4 gap-2">
             {% for image in result.images[:3] %}
             <img
               src="{{ image.src }}"
