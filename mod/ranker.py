@@ -1,11 +1,15 @@
+# ranker.py
+
 import math
 import os
 import re
+from bisect import bisect_left
 from collections import defaultdict
 from functools import lru_cache
 
 import joblib
 
+# Initialize local path for NLTK data to download
 local_nltk_data_path = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "nltk_data"
 )
@@ -13,8 +17,7 @@ os.environ["NLTK_DATA"] = local_nltk_data_path
 os.makedirs(local_nltk_data_path, exist_ok=True)
 
 import nltk
-
-# from nltk.corpus import wordnet
+from nltk.corpus import stopwords, wordnet
 from nltk.stem import PorterStemmer
 from scipy.sparse import load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -23,8 +26,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 print(f"Intended NLTK download directory: {local_nltk_data_path}")
 print(f"NLTK data search paths: {nltk.data.path}")
 
+# Download NLTK data
 nltk.download("wordnet", quiet=True)
 nltk.download("omw-1.4", quiet=True)
+nltk.download("stopwords", quiet=True)
 
 
 def clean_text(text):
@@ -51,49 +56,87 @@ class TFIDFRanker:
             documents (dict): {doc_id: {"url": url, "title": title, "text": text, "images": [...]}}
             rebuild (bool): If True, forces a rebuild of the TF-IDF matrix.
         """
+        print("TF-IDF ranker initializing...")
         self.documents = documents
         self.doc_ids = list(documents.keys())
-        self.corpus_size = len(documents)
-        self.vectorizer_path = "data/tfidf_vectorizer.joblib"
-        self.matrix_path = "data/tfidf_matrix.npz"
+        self.vectorizer = None
+        self.tfidf_matrix = None
         self.stemmer = PorterStemmer()
+        self.stopwords_set = set(stopwords.words("english"))
 
-        # Check for persistence files to decide whether to build or load
-        if rebuild or not (
-            os.path.exists(self.matrix_path) and os.path.exists(self.vectorizer_path)
-        ):
-            self._build_sparse_matrix()
+        # Data for autocomplete functionality
+        self.original_terms_map = {}
+        all_terms = set()
+        for doc in documents.values():
+            text = f"{doc.get('title', '')} {doc.get('text', '')}"
+            for token in tokenize(text):
+                stemmed_token = self.stemmer.stem(token)
+                self.original_terms_map[stemmed_token] = token
+                all_terms.add(stemmed_token)
+
+        self.sorted_terms = sorted(list(all_terms))
+
+        self.model_dir = "models"
+        os.makedirs(self.model_dir, exist_ok=True)
+        self.tfidf_path = os.path.join(self.model_dir, "tfidf_matrix.npz")
+        self.vectorizer_path = os.path.join(self.model_dir, "tfidf_vectorizer.joblib")
+
+        if os.path.exists(self.tfidf_path) and not rebuild:
+            self.load_tfidf()
         else:
-            self._load_sparse_matrix()
+            print("TF-IDF files not found or rebuild is forced. Building new matrix...")
+            self.build_tfidf_matrix()
+            self.save_tfidf()
+        print("TF-IDF ranker initialized.")
 
-    def _build_sparse_matrix(self):
+    def build_tfidf_matrix(self):
         """
         Builds the TF-IDF sparse matrix and persists it to disk.
         """
         print("Building TF-IDF matrix...")
         corpus = [
-            clean_text(doc.get("title", "") + " " + doc.get("text", ""))
+            f"{doc.get('title', '')} {doc.get('text', '')}"
             for doc in self.documents.values()
         ]
 
+        print(f"Processing a corpus of {len(corpus)} documents...")
         self.vectorizer = TfidfVectorizer(
-            lowercase=True, stop_words="english", tokenizer=tokenize, max_features=50000
+            tokenizer=self.custom_tokenizer,
+            stop_words="english",  # built-in English stopwords
         )
+        # self.vectorizer = TfidfVectorizer(
+        #     tokenizer=self.custom_tokenizer,
+        #     stop_words=list(self.stopwords_set)  # Convert set to list
+        # )
         self.tfidf_matrix = self.vectorizer.fit_transform(corpus)
-
-        # Save the vectorizer and the sparse matrix for later use
-        joblib.dump(self.vectorizer, self.vectorizer_path)
-        save_npz(self.matrix_path, self.tfidf_matrix)
         print("TF-IDF matrix built and saved.")
 
-    def _load_sparse_matrix(self):
-        """
-        Loads a pre-built TF-IDF sparse matrix from disk.
-        """
-        print("Loading pre-built TF-IDF matrix...")
-        self.vectorizer = joblib.load(self.vectorizer_path)
-        self.tfidf_matrix = load_npz(self.matrix_path)
-        print("TF-IDF matrix loaded.")
+    def save_tfidf(self):
+        if self.tfidf_matrix is not None:
+            save_npz(self.tfidf_path, self.tfidf_matrix)
+        if self.vectorizer is not None:
+            joblib.dump(self.vectorizer, self.vectorizer_path)
+        print("TF-IDF matrix and vectorizer saved to disk.")
+
+    def load_tfidf(self):
+        print("Loading existing TF-IDF matrix...")
+        try:
+            self.tfidf_matrix = load_npz(self.tfidf_path)
+            self.vectorizer = joblib.load(self.vectorizer_path)
+            if self.vectorizer.tokenizer is None:
+                self.vectorizer.tokenizer = self.custom_tokenizer
+            print("TF-IDF matrix and vectorizer loaded successfully.")
+        except FileNotFoundError:
+            print("TF-IDF files not found. Rebuilding...")
+            self.build_tfidf_matrix()
+            self.save_tfidf()
+        except Exception as e:
+            print(f"Error loading TF-IDF files: {e}. Rebuilding...")
+            self.build_tfidf_matrix()
+            self.save_tfidf()
+
+    def custom_tokenizer(self, text):
+        return [self.stemmer.stem(t) for t in tokenize(text)]
 
     def rank(self, query):
         """
@@ -168,6 +211,27 @@ class TFIDFRanker:
         )
         return final_snippet
 
+    def get_autocomplete_suggestions(self, query):
+        if not query or len(query) < 2:
+            return []
+
+        stemmed_query = self.stemmer.stem(query.lower())
+        start_index = bisect_left(self.sorted_terms, stemmed_query)
+
+        suggestions = []
+        for i in range(start_index, len(self.sorted_terms)):
+            term = self.sorted_terms[i]
+            if term.startswith(stemmed_query):
+                if term in self.original_terms_map:
+                    original_term = self.original_terms_map[term]
+                    if original_term not in suggestions:
+                        suggestions.append(original_term)
+                if len(suggestions) >= 5:
+                    break
+            else:
+                break
+        return suggestions
+
 
 if __name__ == "__main__":
     # --- Example Usage ---
@@ -232,3 +296,9 @@ if __name__ == "__main__":
         if images:
             print(f"    Images found: {len(images)}")
         print("-" * 20)
+
+    # Example for autocomplete
+    print("\n--- Autocomplete Suggestions ---")
+    autocomplete_query = "qui"
+    suggestions = ranker.get_autocomplete_suggestions(autocomplete_query)
+    print(f"Autocomplete for '{autocomplete_query}': {suggestions}")
