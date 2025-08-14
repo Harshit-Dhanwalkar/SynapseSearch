@@ -23,8 +23,8 @@ from scipy.sparse import load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-print(f"[ranker         ] Intended NLTK download directory: {local_nltk_data_path}")
-print(f"[ranker         ] NLTK data search paths: {nltk.data.path}")
+print(f"[ranker          ] Intended NLTK download directory: {local_nltk_data_path}")
+print(f"[ranker          ] NLTK data search paths: {nltk.data.path}")
 
 # Download NLTK data
 nltk.download("wordnet", quiet=True)

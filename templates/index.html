@@ -12,173 +12,34 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-switcher.css') }}">
+    <script src="{{ url_for('static', filename='js/theme-switcher.js') }}" defer></script>
     <style>
-      .loader {
-        border-top-color: #3498db;
-        -webkit-animation: spinner 1.5s linear infinite;
-        animation: spinner 1.5s linear infinite;
-      }
-
-      @-webkit-keyframes spinner {
-        0% {
-          -webkit-transform: rotate(0deg);
-        }
-        100% {
-          -webkit-transform: rotate(360deg);
-        }
-      }
-
-      @keyframes spinner {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-
-      /* --- Theme-specific styles --- */
-      html[data-theme="dark"] body {
-        background-color: #1a202c;
-        color: #e2e8f0;
-      }
-
-      html[data-theme="light"] body {
-        background-color: #ffffff;
-        color: #2d3748;
-      }
-
-      html[data-theme="cyberpunk"] body {
-        background-color: #0d0d0d;
-        color: #4bff21;
-        font-family: "Space Mono", monospace;
-      }
-
-      html[data-theme="dark"] .bg-white {
-        background-color: #2d3748;
-      }
-
-      html[data-theme="dark"] .text-gray-600 {
-        color: #cbd5e0;
-      }
-
-      html[data-theme="dark"] .bg-gray-100 {
-        background-color: #4a5568;
-      }
-
-      html[data-theme="dark"] .hover\:bg-gray-200:hover {
-        background-color: #718096;
-      }
-
-      html[data-theme="cyberpunk"] .bg-white {
-        background-color: #1a202c;
-      }
-
-      html[data-theme="cyberpunk"] .text-gray-600 {
-        color: #00f0ff;
-      }
-
-      html[data-theme="cyberpunk"] .hover\:bg-gray-200:hover {
-        background-color: #1a202c;
-      }
-
-      html[data-theme="cyberpunk"] input {
-        border-color: #772289;
-      }
-
-      .autocomplete-results {
-        max-height: 200px;
-        overflow-y: auto;
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      /* Typewriter cursor */
+      /* CSS for the typewriter effect */
       .typewriter-cursor {
-        display: inline-block;
-        width: 0.15em;
-        height: 1em;
-        background-color: currentColor;
-        margin-left: 2px;
-        animation: blink 1.5s step-end infinite;
+        animation: blink 0.7s infinite;
+        font-weight: bold;
       }
-
       @keyframes blink {
-        from,
-        to {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0;
-        }
+        0% { opacity: 0; }
+        50% { opacity: 1; }
+        100% { opacity: 0; }
       }
     </style>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const titleText = "SynapseSearch";
-        let i = 0;
-        const speed = 150;
-        let cursorInterval;
-        let isTyping = true;
-
-        function typeWriter() {
-          if (i < titleText.length) {
-            document.title =
-              titleText.substring(0, i + 1) + (isTyping ? "|" : "");
-            i++;
-            setTimeout(typeWriter, speed);
-          } else {
-            isTyping = false;
-            // Start blinking cursor effect
-            let cursorVisible = true;
-            cursorInterval = setInterval(() => {
-              document.title = cursorVisible
-                ? titleText + "|"
-                : titleText + " ";
-              cursorVisible = !cursorVisible;
-            }, 500);
-
-            // Reset after delay
-            setTimeout(() => {
-              clearInterval(cursorInterval);
-              i = 0;
-              isTyping = true;
-              document.title = "";
-              setTimeout(typeWriter, 500);
-            }, 3000);
-          }
-        }
-
-        // Start the effect
-        typeWriter();
-
-        // Clean up when leaving page
-        window.addEventListener("beforeunload", function () {
-          if (cursorInterval) clearInterval(cursorInterval);
-          document.title = titleText;
-        });
-      });
-    </script>
   </head>
-  <body class="min-h-screen flex flex-col justify-between">
-    <header class="p-6 text-right">
-      <button id="theme-toggle" class="focus:outline-none">
-        <i class="fas fa-moon text-xl" data-theme-icon="dark"></i>
-        <i class="fas fa-sun text-xl hidden" data-theme-icon="light"></i>
-        <i class="fas fa-robot text-xl hidden" data-theme-icon="cyberpunk"></i>
-      </button>
+  <body class="min-h-screen flex flex-col justify-between theme-bg-main theme-text-primary">
+    <header class="p-6 text-right theme-bg-main">
+      {% include 'partials/theme-switcher.html' %}
     </header>
 
-    <main class="flex-grow flex flex-col items-center justify-center p-6">
-      <h1 id="typewriter-heading" class="text-5xl font-bold mb-8">
+    <main class="flex-grow flex flex-col items-center justify-center p-6 theme-bg-main">
+      <h1 id="typewriter-heading" class="text-5xl font-bold mb-8 theme-text-primary">
         <span id="typewriter-text"></span>
-        <span class="typewriter-cursor"></span>
+        <span class="typewriter-cursor">|</span>
       </h1>
 
       {% if indexer_doc_count %}
-      <p class="text-gray-500 text-sm mb-4">
+      <p class="theme-text-secondary text-sm mb-4">
         Currently indexing {{ indexer_doc_count }} pages.
       </p>
       {% endif %}
@@ -195,12 +56,12 @@
             name="query"
             id="search-input"
             autocomplete="off"
-            class="w-full px-6 py-4 border rounded-full shadow-lg focus:outline-none text-xl bg-white text-gray-900 placeholder-gray-500"
+            class="w-full px-6 py-4 border rounded-full shadow-lg focus:outline-none text-xl theme-input theme-border"
             placeholder="Search the web..."
           />
           <button
             type="submit"
-            class="absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            class="absolute right-6 top-1/2 transform -translate-y-1/2 theme-text-secondary hover:text-gray-700"
           >
             <i class="fas fa-search text-xl"></i>
           </button>
@@ -211,7 +72,7 @@
         ></div>
         <div class="flex items-center justify-center mt-4 space-x-4">
           <div class="inline-flex items-center cursor-pointer">
-            <span class="mr-2 text-gray-600">Keyword Search</span>
+            <span class="mr-2 theme-text-secondary">Keyword Search</span>
             <label class="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -221,138 +82,39 @@
                 class="sr-only peer"
               />
               <div class="relative w-12 h-6">
-                <!-- Track -->
                 <div
                   class="w-full h-full bg-gray-300 rounded-full peer-checked:bg-blue-600 transition-colors duration-200"
                 ></div>
-                <!-- Thumb -->
                 <div
                   class="absolute left-1 top-1 bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform duration-200 peer-checked:translate-x-6"
                 ></div>
               </div>
             </label>
-            <span class="ml-2 text-gray-600">Semantic Search</span>
+            <span class="ml-2 theme-text-secondary">Semantic Search</span>
           </div>
         </div>
       </form>
     </main>
 
-    <footer class="p-6 text-center text-sm text-gray-500">
+    <footer class="p-6 text-center text-sm theme-text-secondary">
       <p>&copy; 2025 SynapseSearch. All rights reserved.</p>
     </footer>
-
     <script>
-      // Theme switching logic
-      const html = document.documentElement;
-      const themeToggle = document.getElementById("theme-toggle");
-      const themeIcons = {
-        dark: document.querySelector('[data-theme-icon="dark"]'),
-        light: document.querySelector('[data-theme-icon="light"]'),
-        cyberpunk: document.querySelector('[data-theme-icon="cyberpunk"]'),
-      };
-      const themes = ["dark", "light", "cyberpunk"];
-
-      function getSavedTheme() {
-        return localStorage.getItem("theme") || "dark";
-      }
-
-      function setTheme(theme) {
-        html.setAttribute("data-theme", theme);
-        localStorage.setItem("theme", theme);
-        Object.values(themeIcons).forEach((icon) =>
-          icon.classList.add("hidden"),
-        );
-        themeIcons[theme].classList.remove("hidden");
-      }
-
-      function cycleTheme() {
-        const currentTheme = getSavedTheme();
-        const currentIndex = themes.indexOf(currentTheme);
-        const nextIndex = (currentIndex + 1) % themes.length;
-        const nextTheme = themes[nextIndex];
-        setTheme(nextTheme);
-      }
-
-      setTheme(getSavedTheme());
-      themeToggle.addEventListener("click", cycleTheme);
-
-      // Autocomplete logic
-      const searchInput = document.getElementById("search-input");
-      const autocompleteResults = document.getElementById(
-        "autocomplete-results",
-      );
-      const searchForm = document.getElementById("search-form");
-
-      searchInput.addEventListener("input", async () => {
-        const query = searchInput.value;
-        if (query.length < 2) {
-          autocompleteResults.innerHTML = "";
-          autocompleteResults.classList.add("hidden");
-          return;
-        }
-        try {
-          const response = await fetch(
-            `/autocomplete?query=${encodeURIComponent(query)}`,
-          );
-          const suggestions = await response.json();
-          autocompleteResults.innerHTML = "";
-          if (suggestions.length > 0) {
-            suggestions.forEach((suggestion) => {
-              const div = document.createElement("div");
-              div.textContent = suggestion;
-              div.classList.add("p-3", "cursor-pointer", "hover:bg-gray-200");
-              div.addEventListener("click", () => {
-                searchInput.value = suggestion;
-                autocompleteResults.classList.add("hidden");
-                searchForm.submit();
-              });
-              autocompleteResults.appendChild(div);
-            });
-            autocompleteResults.classList.remove("hidden");
-          } else {
-            autocompleteResults.classList.add("hidden");
-          }
-        } catch (error) {
-          console.error("Error fetching autocomplete suggestions:", error);
-        }
-      });
-      document.addEventListener("click", (event) => {
-        if (
-          !autocompleteResults.contains(event.target) &&
-          event.target !== searchInput
-        ) {
-          autocompleteResults.classList.add("hidden");
-        }
-      });
-
-      // Semantic search toggle logic
-      const semanticToggle = document.getElementById("semantic-toggle");
-      semanticToggle.addEventListener("change", () => {
-        console.log("Toggle state:", semanticToggle.checked);
-        if (semanticToggle.checked) {
-          searchForm.action = "/search?mode=semantic";
-        } else {
-          searchForm.action = "/search?mode=keyword";
-        }
-      });
-
-      // Typewriter effect
+      // Typewriter effect script
       document.addEventListener("DOMContentLoaded", function () {
+        const textElement = document.getElementById("typewriter-text");
         const headingText = "SynapseSearch";
-        const typewriterElement = document.getElementById("typewriter-text");
         let i = 0;
-        const speed = 150; // typing speed in milliseconds
+        let speed = 100;
 
         function typeWriter() {
           if (i < headingText.length) {
-            typewriterElement.textContent = headingText.substring(0, i + 1);
+            textElement.innerHTML += headingText.charAt(i);
             i++;
             setTimeout(typeWriter, speed);
           }
         }
-
-        // Start the effect after a brief delay
-        setTimeout(typeWriter, 500);
+        typeWriter();
       });
     </script>
   </body>

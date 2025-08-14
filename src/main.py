@@ -64,7 +64,7 @@ def run_data_pipeline(start_urls, max_depth, max_pages):
 
         print(f"\nTotal pages crawled across all seeds: {len(all_crawled_data)}")
         end_time = time.time()
-        print(f"Crawling finished in {end_time - start_time:.2f} seconds.")
+        print(f"[main] Crawling finished in {end_time - start_time:.2f} seconds.")
         print("-" * 25 + " Finished Web Crawling " + "-" * 25 + "\n")
 
         print("-" * 25 + " Starting Indexing " + "-" * 25)
@@ -83,7 +83,7 @@ def run_data_pipeline(start_urls, max_depth, max_pages):
 
         indexer.save_index()
         end_time = time.time()
-        print(f"Indexing finished in {end_time - start_time:.2f} seconds.")
+        print(f"[main] Indexing finished in {end_time - start_time:.2f} seconds.")
         print("-" * 25 + " Finished Indexing " + "-" * 25 + "\n")
 
         print("-" * 25 + " Starting FAISS Indexing " + "-" * 25)
@@ -96,13 +96,13 @@ def run_data_pipeline(start_urls, max_depth, max_pages):
         build_faiss_index(indexer.documents)
         save_faiss_index()
         end_time = time.time()
-        print(f"FAISS Indexing finished in {end_time - start_time:.2f} seconds.")
+        print(f"[main] FAISS Indexing finished in {end_time - start_time:.2f} seconds.")
         print("-" * 25 + " Finished FAISS Indexing " + "-" * 25 + "\n")
 
     else:
         print("\n--- Using existing crawled data and index ---")
 
-    print("\nData pipeline complete. Index ready for searching.")
+    print("\n [main] Data pipeline complete. Index ready for searching.")
 
 
 if __name__ == "__main__":

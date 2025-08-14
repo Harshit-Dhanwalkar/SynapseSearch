@@ -78,7 +78,7 @@ class InvertedIndexer:
         """
         Saves the inverted index and documents to files.
         """
-        print("[indexer        ] Saving index...")
+        print("[indexer         ] Saving index...")
         # if not self.data_dir_exists:
         #     os.makedirs(self.data_dir, exist_ok=True)
         # with open(self.inverted_index_path, "w") as f:
@@ -98,10 +98,10 @@ class InvertedIndexer:
 
             with open(self.documents_path, "w") as f:
                 json.dump(self.documents, f, indent=4)
-            print("[indexer        ] Index saved successfully.")
+            print("[indexer         ] Index saved successfully.")
         except Exception as e:
-            print(f"[indexer        ] Failed to save index: {e}")
-        print(f"[indexer        ] Saved index with {len(self.documents)} documents.")
+            print(f"[indexer         ] Failed to save index: {e}")
+        print(f"[indexer         ] Saved index with {len(self.documents)} documents.")
 
     def load_index(self) -> bool:
         """
@@ -117,10 +117,12 @@ class InvertedIndexer:
         if not os.path.exists(self.inverted_index_path) or not os.path.exists(
             self.documents_path
         ):
-            print("[indexer        ] Index files not found. Starting with empty index.")
+            print(
+                "[indexer         ] Index files not found. Starting with empty index."
+            )
             return False
 
-        print("[indexer        ] Loading existing index...")
+        print("[indexer         ] Loading existing index...")
         try:
             with open(self.inverted_index_path, "r") as f:
                 loaded_index = json.load(f)
@@ -133,12 +135,12 @@ class InvertedIndexer:
             self.doc_count = len(self.documents)
             self.next_doc_id = self.doc_count
             print(
-                f"[indexer        ] Loaded existing index with {self.doc_count} documents."
+                f"[indexer         ] Loaded existing index with {self.doc_count} documents."
             )
             return True
         except Exception as e:
             print(
-                f"[indexer        ] Error loading index: {e}. Starting with empty index."
+                f"[indexer         ] Error loading index: {e}. Starting with empty index."
             )
             self.documents = {}
             self.inverted_index = defaultdict(lambda: defaultdict(list))
@@ -226,5 +228,5 @@ if __name__ == "__main__":
     print("\n--- Search Results ---")
     query = "quick dog"
     results = indexer.search(query)
-    print(f"[indexer        ] Query: '{query}'")
-    print(f"[indexer        ] Matching Document IDs: {results}")
+    print(f"[indexer         ] Query: '{query}'")
+    print(f"[indexer         ] Matching Document IDs: {results}")

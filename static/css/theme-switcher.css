@@ -1,0 +1,112 @@
+/* static/css/theme-switcher.css */
+.theme-switcher {
+  position: relative;
+  display: inline-block;
+}
+
+.theme-toggle-button {
+  background: #4a5568;
+  color: white;
+}
+
+.theme-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.theme-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.theme-icon.hidden {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8);
+}
+
+.theme-option i {
+  color: black;
+  font-size: 1.25rem;
+  margin-bottom: 0;
+}
+
+.theme-tooltip {
+  display: none;
+}
+
+html[data-theme="dark"] {
+  --bg-color-main: #2d3748;
+  --bg-color-header: #1a202c;
+  --bg-color-card: #2d3748;
+  --text-color-primary: #f7fafc;
+  --text-color-secondary: #a0aec0;
+  --link-color: #63b3ed;
+  --border-color: #4a5568;
+  --placeholder-color: #a0aec0;
+  --input-bg-color: #4a5568;
+}
+
+html[data-theme="light"] {
+  --bg-color-main: #ffffff;
+  --bg-color-header: #f7fafc;
+  --bg-color-card: #f7fafc;
+  --text-color-primary: #2d3748;
+  --text-color-secondary: #718096;
+  --link-color: #3182ce;
+  --border-color: #e2e8f0;
+  --placeholder-color: #718096;
+  --input-bg-color: #edf2f7;
+}
+
+html[data-theme="cyberpunk"] {
+  --bg-color-main: #1a202c;
+  --bg-color-header: #000000;
+  --bg-color-card: #000000;
+  --text-color-primary: #00ffff;
+  --text-color-secondary: #ff00ff;
+  --link-color: #ff00ff;
+  --border-color: #00ffff;
+  --placeholder-color: #ff00ff;
+  --input-bg-color: #2d3748;
+}
+
+body {
+  background-color: var(--bg-color-main);
+  color: var(--text-color-primary);
+  transition: background-color 0.3s ease;
+}
+
+.theme-bg-main {
+  background-color: var(--bg-color-main);
+}
+.theme-bg-header {
+  background-color: var(--bg-color-header);
+}
+.theme-bg-card {
+  background-color: var(--bg-color-card);
+}
+.theme-text-primary {
+  color: var(--text-color-primary);
+}
+.theme-text-secondary {
+  color: var(--text-color-secondary);
+}
+.theme-link {
+  color: var(--link-color);
+}
+.theme-border {
+  border-color: var(--border-color);
+}
+.theme-input {
+  background-color: var(--input-bg-color);
+  color: var(--text-color-primary);
+  border-color: var(--border-color);
+}
+.theme-input::placeholder {
+  color: var(--placeholder-color);
+}

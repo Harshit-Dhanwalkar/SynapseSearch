@@ -1,0 +1,30 @@
+<div class="theme-switcher">
+  <button
+    id="theme-toggle"
+    class="theme-toggle-button"
+    aria-label="Change theme"
+  >
+    <i class="fas fa-moon theme-icon" data-theme-icon="dark"></i>
+    <i class="fas fa-sun theme-icon hidden" data-theme-icon="light"></i>
+    <i class="fas fa-robot theme-icon hidden" data-theme-icon="cyberpunk"></i>
+    <span class="theme-tooltip">Change theme</span>
+  </button>
+
+  <div id="theme-menu" class="theme-menu hidden">
+    <div class="theme-options">
+      <button data-theme="light" class="theme-option" aria-label="Light theme">
+        <i class="fas fa-sun"></i>
+      </button>
+      <button data-theme="dark" class="theme-option" aria-label="Dark theme">
+        <i class="fas fa-moon"></i>
+      </button>
+      <button
+        data-theme="cyberpunk"
+        class="theme-option"
+        aria-label="Cyberpunk theme"
+      >
+        <i class="fas fa-robot"></i>
+      </button>
+    </div>
+  </div>
+</div>

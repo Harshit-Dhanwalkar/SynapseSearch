@@ -49,7 +49,13 @@ if not os.path.exists(stopwords_path):
 
 
 # --- Flask App Initialization ---
-app = Flask(__name__, template_folder=os.path.join(project_root, "templates"))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(project_root, "templates"),
+    static_folder=os.path.join(project_root, "static"),
+    static_url_path="/static",
+)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["JSON_SORT_KEYS"] = False
 app.config["CACHE_TYPE"] = "simple"
 cache = Cache(app)

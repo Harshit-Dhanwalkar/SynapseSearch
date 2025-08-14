@@ -12,63 +12,20 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
-    <style>
-      /* --- Theme-specific styles --- */
-      html[data-theme="dark"] body {
-        background-color: #1a202c;
-        color: #e2e8f0;
-      }
-
-      html[data-theme="light"] body {
-        background-color: #ffffff;
-        color: #2d3748;
-      }
-
-      html[data-theme="cyberpunk"] body {
-        background-color: #0d0d0d;
-        color: #4bff21;
-        font-family: "Space Mono", monospace;
-      }
-
-      html[data-theme="dark"] .bg-white {
-        background-color: #2d3748;
-      }
-
-      html[data-theme="dark"] .text-gray-600 {
-        color: #cbd5e0;
-      }
-
-      html[data-theme="dark"] .bg-gray-100 {
-        background-color: #4a5568;
-      }
-
-      html[data-theme="dark"] .hover\:bg-gray-200:hover {
-        background-color: #718096;
-      }
-
-      html[data-theme="cyberpunk"] .bg-white {
-        background-color: #1a202c;
-      }
-
-      html[data-theme="cyberpunk"] .text-gray-600 {
-        color: #00f0ff;
-      }
-      html[data-theme="cyberpunk"] .hover\:bg-gray-200:hover {
-        background-color: #1a202c;
-      }
-
-      html[data-theme="cyberpunk"] input {
-        border-color: #772289;
-      }
-      .tab-active {
-        border-bottom: 2px solid #3b82f6;
-        color: #3b82f6;
-      }
-    </style>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/theme-switcher.css') }}"
+    />
+    <script
+      src="{{ url_for('static', filename='js/theme-switcher.js') }}"
+      defer
+    ></script>
   </head>
-  <body class="min-h-screen flex flex-col items-center">
+  <body
+    class="min-h-screen flex flex-col items-center theme-bg-main theme-text-primary"
+  >
     <header
-      class="w-full flex items-center justify-between p-4 bg-gray-800 text-white shadow-lg"
+      class="w-full flex items-center justify-between p-4 theme-bg-header theme-text-primary shadow-lg"
     >
       <a href="/" class="flex-shrink-0 text-2xl font-bold">SynapseSearch</a>
       <div class="flex-grow max-w-xl mx-4">
@@ -77,7 +34,7 @@
             type="text"
             name="query"
             value="{{ query }}"
-            class="w-full px-4 py-2 border rounded-full text-black"
+            class="w-full px-4 py-2 border rounded-full theme-input theme-border"
             placeholder="Search again..."
           />
           <input
@@ -87,53 +44,51 @@
           />
           <button
             type="submit"
-            class="absolute right-0 top-0 mt-2 mr-4 text-gray-500"
+            class="absolute right-0 top-0 mt-2 mr-4 theme-text-secondary"
           >
             <i class="fas fa-search"></i>
           </button>
         </form>
       </div>
-      <button id="theme-toggle" class="focus:outline-none">
-        <i class="fas fa-moon text-xl" data-theme-icon="dark"></i>
-        <i class="fas fa-sun text-xl hidden" data-theme-icon="light"></i>
-        <i class="fas fa-robot text-xl hidden" data-theme-icon="cyberpunk"></i>
-      </button>
+      {% include 'partials/theme-switcher.html' %}
     </header>
 
-    <main class="w-full max-w-4xl p-6 flex-grow">
-      <div class="flex border-b border-gray-700 mb-6">
+    <main class="w-full max-w-4xl p-6 flex-grow theme-bg-main">
+      <div class="flex border-b theme-border mb-6">
         <button
           onclick="changeContentType('all')"
-          class="py-2 px-4 {% if content_type == 'all' %}tab-active{% else %}text-gray-400{% endif %}"
+          class="py-2 px-4 {% if content_type == 'all' %}tab-active{% else %}theme-text-secondary{% endif %}"
         >
           All
         </button>
         <button
           onclick="changeContentType('images')"
-          class="py-2 px-4 {% if content_type == 'images' %}tab-active{% else %}text-gray-400{% endif %}"
+          class="py-2 px-4 {% if content_type == 'images' %}tab-active{% else %}theme-text-secondary{% endif %}"
         >
           Images
         </button>
       </div>
 
-      <div class="text-xl font-semibold mb-4">{{ message }}</div>
+      <div class="text-xl font-semibold mb-4 theme-text-primary">
+        {{ message }}
+      </div>
 
       {% if content_type == 'all' %}
       <div class="space-y-6">
         {% for result in results %}
         <div
-          class="bg-gray-800 p-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors"
+          class="p-4 rounded-lg shadow-md hover:theme-bg-card transition-colors theme-bg-card"
         >
           <a
             href="{{ result.url }}"
-            class="block text-xl font-semibold text-blue-400 hover:underline"
+            class="block text-xl font-semibold theme-link hover:underline"
             >{{ result.title }}</a
           >
-          <div class="text-sm text-green-400">{{ result.url|url_domain }}</div>
+          <div class="text-sm theme-link">{{ result.url|url_domain }}</div>
 
-          <p class="text-gray-300 mt-2">
+          <p class="theme-text-secondary mt-2">
             {{ result.snippet }}...
-            <span class="text-gray-500">Score: {{ result.score }}</span>
+            <span class="theme-text-secondary">Score: {{ result.score }}</span>
           </p>
 
           {% if result.images %}
@@ -171,47 +126,5 @@
       </div>
       {% endif %}
     </main>
-
-    <script>
-      // Theme switching logic
-      const html = document.documentElement;
-      const themeToggle = document.getElementById("theme-toggle");
-      const themeIcons = {
-        dark: document.querySelector('[data-theme-icon="dark"]'),
-        light: document.querySelector('[data-theme-icon="light"]'),
-        cyberpunk: document.querySelector('[data-theme-icon="cyberpunk"]'),
-      };
-      const themes = ["dark", "light", "cyberpunk"];
-
-      function getSavedTheme() {
-        return localStorage.getItem("theme") || "dark";
-      }
-
-      function setTheme(theme) {
-        html.setAttribute("data-theme", theme);
-        localStorage.setItem("theme", theme);
-        Object.values(themeIcons).forEach((icon) =>
-          icon.classList.add("hidden"),
-        );
-        themeIcons[theme].classList.remove("hidden");
-      }
-
-      function cycleTheme() {
-        const currentTheme = getSavedTheme();
-        const currentIndex = themes.indexOf(currentTheme);
-        const nextIndex = (currentIndex + 1) % themes.length;
-        const nextTheme = themes[nextIndex];
-        setTheme(nextTheme);
-      }
-
-      setTheme(getSavedTheme());
-      themeToggle.addEventListener("click", cycleTheme);
-
-      function changeContentType(type) {
-        const url = new URL(window.location.href);
-        url.searchParams.set("type", type);
-        window.location.href = url.toString();
-      }
-    </script>
   </body>
 </html>
