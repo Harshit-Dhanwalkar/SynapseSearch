@@ -40,10 +40,10 @@ function clean_project() {
     fi
 
     find . -type d -name "__pycache__" -exec rm -rf {} +
-    echo "Removed all __pycache__ directories."
+    echo "Removed all __pycache__ directories..."
 
     find . -type d -name "search_log.txt" -exec rm -rf {} +
-    echo "Removed search log."
+    echo "Removed search log (search_log.txt)..."
 
     echo -e "\nClean operation complete."
 }
@@ -64,3 +64,5 @@ else
     echo "  clean: Removes the virtual environment, log file, __pycache__ and data directory."
     exit 1
 fi
+
+deactivate
