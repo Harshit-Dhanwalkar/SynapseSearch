@@ -51,7 +51,9 @@ async def get_robots_parser(session, domain):
                 robots_content = await response.text()
                 parser.parse(robots_content.splitlines())
     except Exception as e:
-        print(f"Could not fetch or parse robots.txt for {domain}: {e}")
+        print(
+            f"[crawler        ] Could not fetch or parse robots.txt for {domain}: {e}"
+        )
 
     ROBOTS_PARSERS[domain] = parser
     return parser
@@ -79,7 +81,7 @@ async def fetch_image_bytes_async(session, url: str) -> bytes:
                 return None
             return data
     except aiohttp.ClientError as e:
-        print(f"Error fetching image {url}: {e}")
+        print(f"[crawler        ] Error fetching image {url}: {e}")
         return None
 
 
@@ -96,7 +98,7 @@ def ocr_from_pil_image(pil_img: Image.Image) -> str:
             img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
         return pytesseract.image_to_string(img).strip()
     except Exception as e:
-        print(f"Error during OCR: {e}")
+        print(f"[crawler        ] Error during OCR: {e}")
         return ""
 
 
@@ -114,7 +116,7 @@ async def fetch_image_text_async(session, img_url: str) -> str:
         return await loop.run_in_executor(None, ocr_from_pil_image, pil_img)
 
     except Exception as e:
-        print(f"Error processing image {img_url}: {e}")
+        print(f"[crawler        ] Error processing image {img_url}: {e}")
         return ""
 
 
@@ -229,13 +231,13 @@ async def web_crawler(start_url: str, max_depth: int, max_pages: int):
 
             robots_parser = await get_robots_parser(session, domain)
             if not can_fetch(robots_parser, current_url):
-                print(f"Skipping {current_url} (robots.txt)")
+                print(f"[crawler        ] Skipping {current_url} (robots.txt)")
                 visited_urls.add(current_url)
                 continue
 
             visited_urls.add(current_url)
             pages_crawled += 1
-            print(f"Crawling: {current_url} at depth {depth}")
+            print(f"[crawler        ] Crawling: {current_url} at depth {depth}")
 
             try:
                 async with session.get(current_url, timeout=10) as response:
@@ -257,7 +259,9 @@ async def web_crawler(start_url: str, max_depth: int, max_pages: int):
                             "images": processed_images,
                         }
 
-                        print(f"Successfully crawled and parsed {current_url}")
+                        print(
+                            f"[crawler        ] Successfully crawled and parsed {current_url}"
+                        )
 
                         # Find and add new links to the queue
                         links = find_internal_links(soup, current_url, seed_netloc)
@@ -269,14 +273,14 @@ async def web_crawler(start_url: str, max_depth: int, max_pages: int):
                                 queue.append((link, depth + 1))
                     else:
                         print(
-                            f"Failed to fetch {current_url} with status: {response.status}"
+                            f"[crawler        ] Failed to fetch {current_url} with status: {response.status}"
                         )
             except Exception as e:
-                print(f"Error fetching {current_url}: {e}")
+                print(f"[crawler        ] Error fetching {current_url}: {e}")
 
     end_time = time.time()
     print(f"\nCrawl finished in {end_time - start_time:.2f} seconds.")
-    print(f"Crawled {len(crawled_data)} pages.")
+    print(f"[crawler        ] Crawled {len(crawled_data)} pages.")
 
     return crawled_data
 

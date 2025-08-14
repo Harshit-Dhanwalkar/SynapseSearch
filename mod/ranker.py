@@ -23,8 +23,8 @@ from scipy.sparse import load_npz, save_npz
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-print(f"Intended NLTK download directory: {local_nltk_data_path}")
-print(f"NLTK data search paths: {nltk.data.path}")
+print(f"[ranker         ] Intended NLTK download directory: {local_nltk_data_path}")
+print(f"[ranker         ] NLTK data search paths: {nltk.data.path}")
 
 # Download NLTK data
 nltk.download("wordnet", quiet=True)
@@ -57,7 +57,7 @@ class TFIDFRanker:
             stopwords_path (str, optional): Path to custom stopwords file. Defaults to None.
             rebuild (bool): If True, forces a rebuild of the TF-IDF matrix.
         """
-        print("TF-IDF ranker initializing...")
+        print("[ranker          ] TF-IDF ranker initializing...")
         self.documents = documents
         self.doc_ids = list(documents.keys())
         self.vectorizer = None
@@ -86,22 +86,24 @@ class TFIDFRanker:
         if os.path.exists(self.tfidf_path) and not rebuild:
             self.load_tfidf()
         else:
-            print("TF-IDF files not found or rebuild is forced. Building new matrix...")
+            print(
+                "[ranker          ] TF-IDF files not found or rebuild is forced. Building new matrix..."
+            )
             self.build_tfidf_matrix()
             self.save_tfidf()
-        print("TF-IDF ranker initialized.")
+        print("[ranker          ] TF-IDF ranker initialized.")
 
     def build_tfidf_matrix(self):
         """
         Builds the TF-IDF sparse matrix and persists it to disk.
         """
-        print("Building TF-IDF matrix...")
+        print("[ranker          ] Building TF-IDF matrix...")
         corpus = [
             f"{doc.get('title', '')} {doc.get('text', '')}"
             for doc in self.documents.values()
         ]
 
-        print(f"Processing a corpus of {len(corpus)} documents...")
+        print(f"[ranker          ] Processing a corpus of {len(corpus)} documents...")
         self.vectorizer = TfidfVectorizer(
             tokenizer=self.custom_tokenizer,
             stop_words="english",  # built-in English stopwords
@@ -111,29 +113,31 @@ class TFIDFRanker:
         #     stop_words=list(self.stopwords_set)  # Convert set to list
         # )
         self.tfidf_matrix = self.vectorizer.fit_transform(corpus)
-        print("TF-IDF matrix built and saved.")
+        print("[ranker          ] TF-IDF matrix built and saved.")
 
     def save_tfidf(self):
         if self.tfidf_matrix is not None:
             save_npz(self.tfidf_path, self.tfidf_matrix)
         if self.vectorizer is not None:
             joblib.dump(self.vectorizer, self.vectorizer_path)
-        print("TF-IDF matrix and vectorizer saved to disk.")
+        print("[ranker          ] TF-IDF matrix and vectorizer saved to disk.")
 
     def load_tfidf(self):
-        print("Loading existing TF-IDF matrix...")
+        print("[ranker          ] Loading existing TF-IDF matrix...")
         try:
             self.tfidf_matrix = load_npz(self.tfidf_path)
             self.vectorizer = joblib.load(self.vectorizer_path)
             if self.vectorizer.tokenizer is None:
                 self.vectorizer.tokenizer = self.custom_tokenizer
-            print("TF-IDF matrix and vectorizer loaded successfully.")
+            print(
+                "[ranker          ] TF-IDF matrix and vectorizer loaded successfully."
+            )
         except FileNotFoundError:
-            print("TF-IDF files not found. Rebuilding...")
+            print("[ranker          ] TF-IDF files not found. Rebuilding...")
             self.build_tfidf_matrix()
             self.save_tfidf()
         except Exception as e:
-            print(f"Error loading TF-IDF files: {e}. Rebuilding...")
+            print(f"[ranker          ] Error loading TF-IDF files: {e}. Rebuilding...")
             self.build_tfidf_matrix()
             self.save_tfidf()
 
@@ -223,10 +227,10 @@ class TFIDFRanker:
                     custom_stopwords = set(f.read().split())
                 stopwords_set.update(custom_stopwords)
                 print(
-                    f"Loaded {len(custom_stopwords)} additional stopwords from {stopwords_path}"
+                    f"[ranker          ] Loaded {len(custom_stopwords)} additional stopwords from {stopwords_path}"
                 )
             except Exception as e:
-                print(f"Error loading custom stopwords: {e}")
+                print(f"[ranker          ] Error loading custom stopwords: {e}")
 
         return stopwords_set
 
@@ -234,19 +238,19 @@ class TFIDFRanker:
         """
         Builds the TF-IDF sparse matrix and persists it to disk.
         """
-        print("Building TF-IDF matrix...")
+        print("[ranker          ] Building TF-IDF matrix...")
         corpus = [
             f"{doc.get('title', '')} {doc.get('text', '')}"
             for doc in self.documents.values()
         ]
 
-        print(f"Processing a corpus of {len(corpus)} documents...")
+        print(f"[ranker          ] Processing a corpus of {len(corpus)} documents...")
         self.vectorizer = TfidfVectorizer(
             tokenizer=self.custom_tokenizer,
             stop_words=list(self.stopwords_set),  # Use our stopwords set
         )
         self.tfidf_matrix = self.vectorizer.fit_transform(corpus)
-        print("TF-IDF matrix built and saved.")
+        print("[ranker          ] TF-IDF matrix built and saved.")
 
     def get_autocomplete_suggestions(self, query):
         if not query or len(query) < 2:
@@ -338,4 +342,4 @@ if __name__ == "__main__":
     print("\n--- Autocomplete Suggestions ---")
     autocomplete_query = "qui"
     suggestions = ranker.get_autocomplete_suggestions(autocomplete_query)
-    print(f"Autocomplete for '{autocomplete_query}': {suggestions}")
+    print(f"[ranker          ] Autocomplete for '{autocomplete_query}': {suggestions}")

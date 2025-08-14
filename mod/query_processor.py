@@ -73,7 +73,7 @@ class QueryProcessor:
             with open(filepath, "r", encoding="utf-8") as f:
                 stopwords = {word.strip().lower() for word in f}
         except FileNotFoundError:
-            print(f"Warning: Stopwords file '{filename}' not found.")
+            print(f"[query_processor] Warning: Stopwords file '{filename}' not found.")
         return stopwords
 
     def correct_spelling(self, query):
